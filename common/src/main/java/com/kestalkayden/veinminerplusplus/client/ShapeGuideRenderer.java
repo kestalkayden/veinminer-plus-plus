@@ -108,18 +108,20 @@ public final class ShapeGuideRenderer {
      *       for Blaze3D's GPU pipeline cache.</li>
      * </ul>
      */
-    private static final RenderPipeline PIPELINE_LINES_NO_DEPTH =
+    private static final RenderPipeline PIPELINE_LINES_NO_DEPTH = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
                     // Override depth state only — ALWAYS_PASS means the depth test is disabled
                     // (lines always pass, even when behind solid geometry = xray effect).
                     // writeDepth=false avoids corrupting the depth buffer with overlay lines.
                     .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
-                    // Give the pipeline a unique Identifier for Blaze3D's GPU pipeline cache.
-                    // Registration via RenderPipelines.register() is intentionally skipped here —
-                    // that method is package-private (exposed only to the vanilla init code) and
-                    // registration is only needed for the hot-reload static list, not for drawing.
+                    // Unique Identifier for Blaze3D's GPU pipeline cache.
                     .withLocation(Identifier.fromNamespaceAndPath("veinminerplusplus", "lines_no_depth"))
-                    .build();
+                    .build());
+    // We register() the pipeline rather than leaving it loose. An UNregistered custom pipeline
+    // draws fine in vanilla but Sodium/Iris silently drop it (it never enters their pipeline set) —
+    // that's why the guide vanished in-pack even with shaders off. register() adds it to the shared
+    // list they scan, so the pipeline becomes visible to them. No access widener needed — register()
+    // is reachable on 26.1.2.
 
     /**
      * The {@link RenderType} that batches vertices for {@link #PIPELINE_LINES_NO_DEPTH}.
