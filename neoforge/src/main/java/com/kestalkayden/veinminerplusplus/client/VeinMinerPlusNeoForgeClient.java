@@ -3,14 +3,11 @@ package com.kestalkayden.veinminerplusplus.client;
 import org.lwjgl.glfw.GLFW;
 
 import com.kestalkayden.veinminerplusplus.VeinMinerPlus;
-import com.kestalkayden.veinminerplusplus.config.VeinMinerPlusConfig;
 import com.kestalkayden.veinminerplusplus.core.ClientShapeState;
 import com.kestalkayden.veinminerplusplus.core.MineShape;
 import com.kestalkayden.veinminerplusplus.core.ShapeState;
 import com.kestalkayden.veinminerplusplus.core.VeinMinerConfig;
 import com.kestalkayden.veinminerplusplus.network.ShapeSelectPayload;
-
-import me.shedaniel.autoconfig.AutoConfigClient;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -27,7 +24,7 @@ import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 
 /**
- * NeoForge client-side logic — registered only when the dist is CLIENT.
+ * NeoForge client-side logic -- registered only when the dist is CLIENT.
  *
  * <p>Instantiated by {@link com.kestalkayden.veinminerplusplus.VeinMinerPlusNeoForge} after a
  * {@link net.neoforged.fml.loading.FMLEnvironment#getDist()} check so that this class (and its
@@ -44,6 +41,8 @@ import net.neoforged.neoforge.common.NeoForge;
  *   <li>Subscribe to {@link RenderLevelStageEvent.AfterTranslucentFeatures} (the specific subclass,
  *       not the abstract base — {@code RenderLevelStageEvent} is abstract in 26.1 and has no
  *       {@code getStage()} check) and delegate to {@link ShapeGuideRenderer}.
+ *   <li>Register the mod config screen via {@link IConfigScreenFactory} so the mod-list
+ *       "Config" button opens the hand-built {@link VeinMinerPlusConfigScreen}.
  * </ol>
  */
 public final class VeinMinerPlusNeoForgeClient {
@@ -87,11 +86,11 @@ public final class VeinMinerPlusNeoForgeClient {
         // AfterTranslucentFeatures is the correct stage for a translucent overlay.
         NeoForge.EVENT_BUS.addListener(VeinMinerPlusNeoForgeClient::onRenderLevel);
 
-        // Register the config screen factory so the mod-list "Config" button opens the
-        // Cloth AutoConfig screen. IConfigScreenFactory is a client-only NeoForge extension
-        // point — safe here because this constructor only runs when dist == CLIENT.
+        // Register the config screen factory so the mod-list "Config" button opens our
+        // hand-built vanilla screen. IConfigScreenFactory is a client-only NeoForge extension
+        // point -- safe here because this constructor only runs when dist == CLIENT.
         modContainer.registerExtensionPoint(IConfigScreenFactory.class,
-                (container, parent) -> AutoConfigClient.getConfigScreen(VeinMinerPlusConfig.class, parent).get());
+                (container, parent) -> new VeinMinerPlusConfigScreen(parent));
     }
 
     // -------------------------------------------------------------------------

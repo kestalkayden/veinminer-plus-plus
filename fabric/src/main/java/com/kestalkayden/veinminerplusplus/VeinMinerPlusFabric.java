@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -24,9 +25,11 @@ public class VeinMinerPlusFabric implements ModInitializer {
     public void onInitialize() {
         LOGGER.info("Initializing Veinminer++ (Fabric)");
 
-        // Register Cloth AutoConfig early — must happen before any event listeners that read
-        // VeinMinerConfig, so the loaded values are in place from the first server tick.
-        VeinMinerPlusConfig.register();
+        // Inject the Fabric config directory and load the Gson-backed config. Must happen before
+        // any event listeners that read VeinMinerConfig, so loaded values are in place from the
+        // first server tick.
+        VeinMinerPlusConfig.setConfigDir(FabricLoader.getInstance().getConfigDir());
+        VeinMinerPlusConfig.load();
 
         // After a player breaks a block on the server, hand it to the shared vein-mine core.
         PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
@@ -39,7 +42,7 @@ public class VeinMinerPlusFabric implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(VeinMiner::tick);
 
         // Register the C2S shape-select payload and its server receiver HERE (main init), not in
-        // the client entrypoint — so a dedicated server registers them too. The client only sends.
+        // the client entrypoint -- so a dedicated server registers them too. The client only sends.
         PayloadTypeRegistry.serverboundPlay().register(
                 ShapeSelectPayload.TYPE, ShapeSelectPayload.STREAM_CODEC);
         ServerPlayNetworking.registerGlobalReceiver(

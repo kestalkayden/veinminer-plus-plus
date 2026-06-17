@@ -27,10 +27,3 @@ type="required"
 versionRange="[26.1,26.2)"
 ordering="NONE"
 side="BOTH"
-
-[[dependencies.veinminerplusplus]]
-modId="cloth_config"
-type="required"
-versionRange="[26.1.154,)"
-ordering="NONE"
-side="BOTH"

@@ -16,12 +16,6 @@ sourceSets {
     }
 }
 
-dependencies {
-    // Cloth Config for NeoForge — NOT bundled here; NeoForge packs it via the mod's own jar-in-jar
-    // or users install it separately. We compile against it; bundling is handled by Fabric only.
-    implementation "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
-}
-
 neoForge {
     version = neoforge_version
     validateAccessTransformers = false
