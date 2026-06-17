@@ -135,6 +135,13 @@ public final class ShapeGuideRenderer {
             RenderSetup.builder(PIPELINE_LINES_NO_DEPTH)
                     .createRenderSetup());
 
+    static {
+        // Optional Iris support: when Iris is installed, route our depth-disabled lines pipeline
+        // through Iris's LINES program so the see-through guide survives an active shaderpack
+        // (Iris draws only geometry tied to a program it knows). No-op without Iris — see IrisCompat.
+        IrisCompat.assignToLinesProgram(PIPELINE_LINES_NO_DEPTH);
+    }
+
     // -------------------------------------------------------------------------
     // Private constructor — all methods are static
     // -------------------------------------------------------------------------
