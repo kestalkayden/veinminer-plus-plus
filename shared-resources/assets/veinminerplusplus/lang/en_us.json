@@ -5,36 +5,35 @@
   "key.veinminerplusplus.shape_prev": "Previous Shape",
   "key.veinminerplusplus.shape_next": "Next Shape",
 
-  "text.autoconfig.veinminerplusplus.title": "Veinminer++ Config",
-  "text.autoconfig.veinminerplusplus.category.default": "Settings",
+  "veinminerplusplus.config.title": "Veinminer++ Settings",
 
-  "text.autoconfig.veinminerplusplus.option.veinMax": "Vein cap (blocks)",
-  "text.autoconfig.veinminerplusplus.option.veinMax.@Tooltip": "Maximum blocks broken in one Vein action — the everyday mode. Kept small so casual vein-mining stays bounded (1–128).",
+  "veinminerplusplus.config.veinMax": "Vein cap (blocks)",
+  "veinminerplusplus.config.veinMax.tooltip": "Maximum blocks broken in one Vein action — the everyday mode. Kept small so casual vein-mining stays bounded (1–128).",
 
-  "text.autoconfig.veinminerplusplus.option.spreadMax": "Spread cap (blocks)",
-  "text.autoconfig.veinminerplusplus.option.spreadMax.@Tooltip": "Maximum blocks broken in one Spread action — the larger, opt-in mode (1–1024).",
+  "veinminerplusplus.config.spreadMax": "Spread cap (blocks)",
+  "veinminerplusplus.config.spreadMax.tooltip": "Maximum blocks broken in one Spread action — the larger, opt-in mode (1–1024).",
 
-  "text.autoconfig.veinminerplusplus.option.treeMax": "Tree cap (blocks)",
-  "text.autoconfig.veinminerplusplus.option.treeMax.@Tooltip": "Maximum logs felled from one tree — large enough for tall 2x2 giant trees (1–1024).",
+  "veinminerplusplus.config.treeMax": "Tree cap (blocks)",
+  "veinminerplusplus.config.treeMax.tooltip": "Maximum logs felled from one tree — large enough for tall 2x2 giant trees (1–512).",
 
-  "text.autoconfig.veinminerplusplus.option.smartTrees": "Smart tree detection",
-  "text.autoconfig.veinminerplusplus.option.smartTrees.@Tooltip": "When on, breaking a log only fells the tree if leaves are attached to its logs — so log and wood-block houses are left intact. Turn off to fell any connected logs.",
+  "veinminerplusplus.config.blocksPerTick": "Blocks per tick",
+  "veinminerplusplus.config.blocksPerTick.tooltip": "How many blocks are broken per server tick while draining the queue. Higher = faster, heavier on the server (1–64).",
 
-  "text.autoconfig.veinminerplusplus.option.clearLeaves": "Clear leaves of felled trees",
-  "text.autoconfig.veinminerplusplus.option.clearLeaves.@Tooltip": "When on, felling an isolated tree also clears its leaf canopy, dropping the same loot (saplings, sticks, apples) leaves give when they decay. Trees whose leaves are shared with a neighbour are left to decay normally.",
+  "veinminerplusplus.config.durabilityPercent": "Durability cost",
+  "veinminerplusplus.config.durabilityPercent.tooltip": "Durability cost per block as a percentage of vanilla: 100 = normal, 0 = free, 150 = 50% more. Unbreaking still applies on top (0–150).",
 
-  "text.autoconfig.veinminerplusplus.option.blocksPerTick": "Blocks broken per tick",
-  "text.autoconfig.veinminerplusplus.option.blocksPerTick.@Tooltip": "How many blocks are broken per server tick while draining the queue. Higher = faster, heavier on the server (1–128).",
+  "veinminerplusplus.config.smartTrees": "Smart tree detection",
+  "veinminerplusplus.config.smartTrees.tooltip": "When on, breaking a log only fells the tree if leaves are attached to its logs — so log and wood-block houses are left intact. Turn off to fell any connected logs.",
 
-  "text.autoconfig.veinminerplusplus.option.requireTool": "Require a tool",
-  "text.autoconfig.veinminerplusplus.option.requireTool.@Tooltip": "When on, soft blocks (grass, dirt, sand) still need a tool in hand to vein-mine. When off, they can be vein-mined by hand or any item — handy early game or to save durability. Hard blocks (stone, ore) always need the correct tool either way; a block that wouldn't drop for you is never broken.",
+  "veinminerplusplus.config.clearLeaves": "Clear felled-tree leaves",
+  "veinminerplusplus.config.clearLeaves.tooltip": "When on, felling an isolated tree also clears its leaf canopy, dropping the same loot (saplings, sticks, apples) leaves give when they decay. Trees whose leaves are shared with a neighbour are left to decay normally.",
 
-  "text.autoconfig.veinminerplusplus.option.enableSpread": "Enable Spread mode",
-  "text.autoconfig.veinminerplusplus.option.enableSpread.@Tooltip": "When on, the larger Spread mode is added to the [ / ] cycle. Spread follows connected matching blocks like Vein but up to the (bigger) Spread cap.",
+  "veinminerplusplus.config.requireTool": "Require a tool",
+  "veinminerplusplus.config.requireTool.tooltip": "When on, soft blocks (grass, dirt, sand) still need a tool in hand to vein-mine. When off, they can be vein-mined by hand or any item — handy early game or to save durability. Hard blocks always need the correct tool.",
 
-  "text.autoconfig.veinminerplusplus.option.durabilityPercent": "Durability cost (%)",
-  "text.autoconfig.veinminerplusplus.option.durabilityPercent.@Tooltip": "Durability cost per block as a percentage of vanilla: 100 = normal, 0 = free, 150 = 50% more. Unbreaking still applies on top.",
+  "veinminerplusplus.config.enableSpread": "Enable Spread mode",
+  "veinminerplusplus.config.enableSpread.tooltip": "When on, the larger Spread mode is added to the [ / ] cycle. Spread follows connected matching blocks like Vein but up to the (bigger) Spread cap.",
 
-  "text.autoconfig.veinminerplusplus.option.alwaysShowGuide": "Always show shape guide",
-  "text.autoconfig.veinminerplusplus.option.alwaysShowGuide.@Tooltip": "When on, the 3x3x3 edge guide is rendered continuously while sneaking, not just briefly after cycling shapes."
+  "veinminerplusplus.config.alwaysShowGuide": "Always show shape guide",
+  "veinminerplusplus.config.alwaysShowGuide.tooltip": "When on, the 3x3x3 edge guide is rendered continuously while sneaking, not just briefly after cycling shapes."
 }

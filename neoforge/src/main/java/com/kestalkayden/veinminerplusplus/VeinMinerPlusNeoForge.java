@@ -15,6 +15,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -30,9 +31,11 @@ public class VeinMinerPlusNeoForge {
     public VeinMinerPlusNeoForge(IEventBus modBus, ModContainer modContainer) {
         LOGGER.info("Initializing Veinminer++ (NeoForge)");
 
-        // Register Cloth AutoConfig early — must happen before any event listeners that read
-        // VeinMinerConfig, so the loaded values are in place from the first server tick.
-        VeinMinerPlusConfig.register();
+        // Inject the NeoForge config directory and load the Gson-backed config. Must happen before
+        // any event listeners that read VeinMinerConfig, so loaded values are in place from the
+        // first server tick.
+        VeinMinerPlusConfig.setConfigDir(FMLPaths.CONFIGDIR.get());
+        VeinMinerPlusConfig.load();
 
         // Register the C2S payload on the mod event bus (fires before the world loads).
         modBus.addListener(VeinMinerPlusNeoForge::onRegisterPayloadHandlers);
@@ -49,7 +52,7 @@ public class VeinMinerPlusNeoForge {
     }
 
     // -------------------------------------------------------------------------
-    // Networking — mod bus
+    // Networking -- mod bus
     // -------------------------------------------------------------------------
 
     private static void onRegisterPayloadHandlers(RegisterPayloadHandlersEvent event) {
@@ -57,8 +60,6 @@ public class VeinMinerPlusNeoForge {
         PayloadRegistrar registrar = event.registrar(VeinMinerPlus.MOD_ID).versioned("1");
 
         // playToServer: C2S packet carrying the player's selected shape ordinal.
-        // The handler runs on the MAIN thread (NeoForge default for playToServer when
-        // .executesOn() is omitted is the network thread; we call enqueueWork to be safe).
         registrar.playToServer(
                 ShapeSelectPayload.TYPE,
                 ShapeSelectPayload.STREAM_CODEC,
