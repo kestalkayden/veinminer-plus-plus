@@ -40,7 +40,7 @@ public final class VeinMinerConfig {
     public static boolean enableExtraShapes = false;
 
     /** Per-block durability cost multiplier: 0.0 (free) .. 1.5 (50% extra); 1.0 = vanilla. */
-    public static double durabilityMultiplier = 0.80;
+    public static double durabilityMultiplier = 0.65;
 
     /** Always render the shape edge guide while the activation key is held (box modes only). */
     public static boolean alwaysShowGuide = false;
