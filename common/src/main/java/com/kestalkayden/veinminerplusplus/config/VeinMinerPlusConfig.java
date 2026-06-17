@@ -27,10 +27,11 @@ import java.nio.file.Path;
  * the same path that Cloth AutoConfig used so existing user configs migrate unchanged.
  *
  * <h3>JSON shape</h3>
- * <p>Field names match the original Cloth AutoConfig POJO exactly:
+ * <p>Field names match the original Cloth AutoConfig POJO, plus {@code enableExtraShapes} (added
+ * post-cloth; absent in old configs, so Gson leaves it at its {@code false} default):
  * {@code veinMax}, {@code spreadMax}, {@code treeMax}, {@code smartTrees}, {@code clearLeaves},
- * {@code blocksPerTick}, {@code requireTool}, {@code enableSpread}, {@code durabilityPercent},
- * {@code alwaysShowGuide}.
+ * {@code blocksPerTick}, {@code requireTool}, {@code enableSpread}, {@code enableExtraShapes},
+ * {@code durabilityPercent}, {@code alwaysShowGuide}.
  */
 public class VeinMinerPlusConfig {
 
@@ -62,6 +63,9 @@ public class VeinMinerPlusConfig {
 
     /** When on, the larger Spread mode is offered in the [ / ] cycle. */
     public boolean enableSpread = false;
+
+    /** When on, the extra box shapes (5x5x5, 9x9x3) are offered in the [ / ] cycle. */
+    public boolean enableExtraShapes = false;
 
     /** Durability cost as a percentage of vanilla per block: 100 = vanilla, 0 = free, 150 = 1.5x.
      *  Range: 0-150. */
@@ -156,6 +160,7 @@ public class VeinMinerPlusConfig {
         VeinMinerConfig.blocksPerTick        = blocksPerTick;
         VeinMinerConfig.requireTool          = requireTool;
         VeinMinerConfig.enableSpread         = enableSpread;
+        VeinMinerConfig.enableExtraShapes    = enableExtraShapes;
         VeinMinerConfig.durabilityMultiplier = durabilityPercent / 100.0;
         VeinMinerConfig.alwaysShowGuide      = alwaysShowGuide;
     }

@@ -15,26 +15,34 @@ import net.minecraft.world.phys.AABB;
  *        block cap (Vein is small/everyday, Spread is large) and Spread is gated behind config.
  *    <li>{@link #CUBE_3} is an oriented 3x3x3 box: the block the player broke sits on the near
  *        face and the box extends into the surface along the look direction. No vein extension.
+ *    <li>{@link #CUBE_5} (5x5x5) and {@link #HALL} (9 wide x 3 tall x 9 deep) are larger oriented
+ *        boxes, gated behind the "enable extra shapes" config toggle. Like {@link #CUBE_3} they
+ *        break their full volume (no cap — the shape is its own bound), staggered by blocksPerTick.
  *  </ul> */
 public enum MineShape {
 
-    VEIN("Vein", false, false, 0, 0, 0),
-    CUBE_3("3x3x3", true, false, 3, 3, 3),
-    SPREAD("Spread", false, true, 0, 0, 0);
+    VEIN("Vein", false, Gate.NONE, 0, 0, 0),
+    CUBE_3("3x3x3", true, Gate.NONE, 3, 3, 3),
+    CUBE_5("5x5x5", true, Gate.EXTRA, 5, 5, 5),
+    HALL("9x9x3", true, Gate.EXTRA, 9, 3, 9),
+    SPREAD("Spread", false, Gate.SPREAD, 0, 0, 0);
+
+    /** Which config toggle, if any, gates a shape's appearance in the [ / ] cycle. */
+    public enum Gate { NONE, SPREAD, EXTRA }
 
     public final String label;
     /** True for the oriented cuboid; false for connectivity floods. */
     public final boolean box;
-    /** True if this mode only appears in the cycle when its config gate is enabled. */
-    public final boolean gated;
+    /** Which config toggle gates this shape in the cycle ({@link Gate#NONE} = always shown). */
+    public final Gate gate;
     public final int width;
     public final int height;
     public final int depth;
 
-    MineShape(String label, boolean box, boolean gated, int width, int height, int depth) {
+    MineShape(String label, boolean box, Gate gate, int width, int height, int depth) {
         this.label = label;
         this.box = box;
-        this.gated = gated;
+        this.gate = gate;
         this.width = width;
         this.height = height;
         this.depth = depth;
@@ -44,12 +52,17 @@ public enum MineShape {
         return box;
     }
 
-    /** The ordered cycle list; gated modes (Spread) appear only when {@code includeSpread}. */
-    public static List<MineShape> cycle(boolean includeSpread) {
+    /** The ordered cycle list. Spread appears only when {@code includeSpread}; the extra box
+     *  shapes (5x5x5, 9x9x3) appear only when {@code includeExtra}. */
+    public static List<MineShape> cycle(boolean includeSpread, boolean includeExtra) {
         List<MineShape> list = new ArrayList<>();
         for (MineShape shape : values()) {
-            if (shape.gated && !includeSpread) continue;
-            list.add(shape);
+            boolean show = switch (shape.gate) {
+                case NONE -> true;
+                case SPREAD -> includeSpread;
+                case EXTRA -> includeExtra;
+            };
+            if (show) list.add(shape);
         }
         return list;
     }

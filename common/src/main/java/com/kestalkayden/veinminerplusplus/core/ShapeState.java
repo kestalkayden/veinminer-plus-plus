@@ -30,8 +30,8 @@ public final class ShapeState {
 
     /** Cycle from {@code current} by {@code direction} (+1 next, -1 previous) within the
      *  config-allowed list. Used client-side to pick the shape that is then sent to the server. */
-    public static MineShape cycle(MineShape current, int direction, boolean includeSpread) {
-        List<MineShape> list = MineShape.cycle(includeSpread);
+    public static MineShape cycle(MineShape current, int direction, boolean includeSpread, boolean includeExtra) {
+        List<MineShape> list = MineShape.cycle(includeSpread, includeExtra);
         int index = list.indexOf(current);
         if (index < 0) {
             index = 0;

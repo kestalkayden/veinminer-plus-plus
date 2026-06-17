@@ -89,12 +89,12 @@ public class VeinMinerPlusFabricClient implements ClientModInitializer {
         boolean changed = false;
         while (KEY_PREV_SHAPE.consumeClick()) {
             ClientShapeState.current = ShapeState.cycle(
-                    ClientShapeState.current, -1, VeinMinerConfig.enableSpread);
+                    ClientShapeState.current, -1, VeinMinerConfig.enableSpread, VeinMinerConfig.enableExtraShapes);
             changed = true;
         }
         while (KEY_NEXT_SHAPE.consumeClick()) {
             ClientShapeState.current = ShapeState.cycle(
-                    ClientShapeState.current, +1, VeinMinerConfig.enableSpread);
+                    ClientShapeState.current, +1, VeinMinerConfig.enableSpread, VeinMinerConfig.enableExtraShapes);
             changed = true;
         }
 
