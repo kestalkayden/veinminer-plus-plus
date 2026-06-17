@@ -15,7 +15,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
@@ -74,16 +73,10 @@ public class VeinMinerPlusFabricClient implements ClientModInitializer {
         // Register the world-render callback for the shape guide outline.
         // AFTER_TRANSLUCENT_FEATURES fires after translucent geometry is submitted — the correct
         // stage for a translucent-blended overlay that must appear in front of the world.
-        // The LevelRenderContext provides poseStack(); we obtain the bufferSource from Minecraft
-        // directly (context has no bufferSource() method in this Fabric API version).
-        LevelRenderEvents.AFTER_TRANSLUCENT_FEATURES.register(ctx -> {
-            Minecraft mc = Minecraft.getInstance();
-            MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-            ShapeGuideRenderer.render(ctx.poseStack(), bufferSource);
-            // Flush the batch immediately so our LINES_NO_DEPTH vertices are dispatched before
-            // subsequent render passes assume the buffer is clean.
-            bufferSource.endBatch();
-        });
+        // In fabric-api 0.152.1+26.2 the LevelRenderContext exposes submitNodeCollector() and
+        // poseStack() directly (the old consumers()/MultiBufferSource accessor is gone).
+        LevelRenderEvents.AFTER_TRANSLUCENT_FEATURES.register(ctx ->
+                ShapeGuideRenderer.render(ctx.submitNodeCollector(), ctx.poseStack()));
     }
 
     // -------------------------------------------------------------------------

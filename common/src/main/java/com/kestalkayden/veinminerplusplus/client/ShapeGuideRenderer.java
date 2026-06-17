@@ -4,59 +4,34 @@ import com.kestalkayden.veinminerplusplus.core.ClientShapeState;
 import com.kestalkayden.veinminerplusplus.core.MineShape;
 import com.kestalkayden.veinminerplusplus.core.VeinMinerConfig;
 
-import com.mojang.blaze3d.pipeline.DepthStencilState;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.ShapeRenderer;
-import net.minecraft.client.renderer.rendertype.RenderSetup;
-import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * Renders an xray-esque (depth-test-disabled) outline of the currently selected cuboid shape
  * centred on the block the player is looking at.  Call {@link #render} from both loaders'
- * AFTER_TRANSLUCENT_FEATURES stage.
+ * AFTER_TRANSLUCENT_FEATURES / SubmitCustomGeometryEvent hook.
  *
- * <h3>Custom RenderType rationale</h3>
+ * <h3>26.2 render pipeline</h3>
  *
- * <p>The vanilla {@code RenderTypes.LINES} constant uses {@link RenderPipelines#LINES}, which
- * applies a standard {@code LESS_THAN_OR_EQUAL} depth test — lines are hidden behind opaque
- * geometry.  To achieve the xray-through-walls effect we need a pipeline whose depth-stencil state
- * uses {@link CompareOp#ALWAYS_PASS} with {@code writeDepth = false}.
+ * <p>In 26.2, immediate-mode buffer sources ({@code MultiBufferSource}, {@code ShapeRenderer}) are
+ * gone.  Geometry is submitted to the frame graph through a {@link SubmitNodeCollector} obtained
+ * from the Fabric {@code LevelRenderContext} or the NeoForge {@code SubmitCustomGeometryEvent}.
  *
- * <p>We build this once ({@link #LINES_NO_DEPTH}) by:
- * <ol>
- *   <li>Calling {@link RenderPipeline#builder(RenderPipeline.Snippet...)} with
- *       {@link RenderPipelines#LINES_SNIPPET} so all shaders, vertex format, blending, and other
- *       state are inherited from the vanilla lines pipeline.</li>
- *   <li>Overriding the depth-stencil state via
- *       {@link RenderPipeline.Builder#withDepthStencilState(DepthStencilState)} to use
- *       {@code ALWAYS_PASS, writeDepth=false} — fragments win regardless of depth (xray).</li>
- *   <li>Assigning a unique location so the pipeline can be looked up in debug tools.</li>
- *   <li>Registering with {@code RenderPipelines.register()} as vanilla does for its own pipelines
- *       (registration makes the pipeline available to Blaze3D's compiled pipeline cache).</li>
- *   <li>Wrapping in a {@link RenderType} via {@link RenderType#create} so the
- *       {@link MultiBufferSource} can batch vertices for it.</li>
- * </ol>
- *
- * <p>The resulting {@link RenderType} accepts the same vertex format as the vanilla lines type
- * ({@code POSITION_COLOR_NORMAL_LINE_WIDTH}) — exactly what {@link ShapeRenderer#renderShape}
- * emits.
+ * <p>We use {@link SubmitNodeCollector#submitShapeOutline} with {@code xray=true} (last {@code boolean}
+ * parameter) which disables the depth test so the outline is visible through walls — the same
+ * xray effect the 26.1 version achieved via a custom {@code RenderPipeline}.  No custom pipeline
+ * registration is required.
  *
  * <h3>Visibility rules (checked every frame in {@link #render})</h3>
  * <ol>
@@ -80,58 +55,13 @@ public final class ShapeGuideRenderer {
 
     /**
      * Color of the guide outline — cyan with 50 % alpha.
-     * Encoded as a packed {@code 0xAARRGGBB} int as accepted by {@link ShapeRenderer#renderShape}.
+     * Encoded as a packed {@code 0xAARRGGBB} int as accepted by
+     * {@link SubmitNodeCollector#submitShapeOutline}.
      */
     private static final int GUIDE_COLOR_ARGB = 0x8030E0FF;  // α=0x80, r=0x30, g=0xE0, b=0xFF
 
-    /** Line width passed to {@link ShapeRenderer#renderShape}. */
+    /** Line width passed to {@link SubmitNodeCollector#submitShapeOutline}. */
     private static final float LINE_WIDTH = 2.0f;
-
-    // -------------------------------------------------------------------------
-    // Custom no-depth render pipeline and RenderType
-    // -------------------------------------------------------------------------
-
-    /**
-     * A {@link RenderPipeline} identical to the vanilla lines pipeline but with the depth-stencil
-     * state overridden to {@link CompareOp#ALWAYS_PASS} + {@code writeDepth=false}.
-     *
-     * <p>Construction:
-     * <ul>
-     *   <li>{@link RenderPipeline#builder(RenderPipeline.Snippet...)} with
-     *       {@link RenderPipelines#LINES_SNIPPET} seeds the builder with the lines shaders, vertex
-     *       format ({@code POSITION_COLOR_NORMAL_LINE_WIDTH}), mode ({@code LINES}), and blend
-     *       state.</li>
-     *   <li>{@link RenderPipeline.Builder#withDepthStencilState(DepthStencilState)} overrides the
-     *       depth rule to ALWAYS_PASS so fragments render regardless of what is in the depth
-     *       buffer, and disables depth writes so we don't corrupt subsequent depth-tested draws.</li>
-     *   <li>{@link RenderPipeline.Builder#withLocation(Identifier)} gives the pipeline a unique id
-     *       for Blaze3D's GPU pipeline cache.</li>
-     * </ul>
-     */
-    private static final RenderPipeline PIPELINE_LINES_NO_DEPTH =
-            RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
-                    // Override depth state only — ALWAYS_PASS means the depth test is disabled
-                    // (lines always pass, even when behind solid geometry = xray effect).
-                    // writeDepth=false avoids corrupting the depth buffer with overlay lines.
-                    .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
-                    // Give the pipeline a unique Identifier for Blaze3D's GPU pipeline cache.
-                    // Registration via RenderPipelines.register() is intentionally skipped here —
-                    // that method is package-private (exposed only to the vanilla init code) and
-                    // registration is only needed for the hot-reload static list, not for drawing.
-                    .withLocation(Identifier.fromNamespaceAndPath("veinminerplusplus", "lines_no_depth"))
-                    .build();
-
-    /**
-     * The {@link RenderType} that batches vertices for {@link #PIPELINE_LINES_NO_DEPTH}.
-     *
-     * <p>{@link RenderSetup#builder(RenderPipeline)} creates a setup from a pipeline and is the
-     * correct way to tie a pipeline to a {@link RenderType} in 26.1.  No additional texture or
-     * lightmap flags are needed because the lines shader is position+color only.
-     */
-    private static final RenderType LINES_NO_DEPTH = RenderType.create(
-            "veinminerplusplus:lines_no_depth",
-            RenderSetup.builder(PIPELINE_LINES_NO_DEPTH)
-                    .createRenderSetup());
 
     // -------------------------------------------------------------------------
     // Private constructor — all methods are static
@@ -146,22 +76,21 @@ public final class ShapeGuideRenderer {
     /**
      * Evaluate visibility conditions and, if met, draw the cuboid outline.
      *
-     * <p>The caller supplies the {@link PoseStack} already in its render-frame state (identity at
-     * the camera origin) and a {@link MultiBufferSource} to batch the lines into.  After drawing
-     * the caller is responsible for flushing the batch (both loaders call
-     * {@code ((MultiBufferSource.BufferSource) bufferSource).endBatch()} after this method).
+     * <p>The caller supplies the {@link SubmitNodeCollector} and the {@link PoseStack} obtained
+     * from the render event.  The PoseStack is identity at the camera origin; the
+     * {@link VoxelShape} is submitted in world coordinates.  {@code submitShapeOutline} with
+     * {@code xray=true} handles camera-relative projection and depth-test disabling internally.
      *
-     * @param poseStack    the frame PoseStack (camera-relative, identity at call time)
-     * @param bufferSource the batch to write vertices into
+     * @param collector  the node collector from the current frame's render event
+     * @param poseStack  the frame PoseStack (camera-relative, identity at call time)
      */
-    public static void render(PoseStack poseStack, MultiBufferSource bufferSource) {
+    public static void render(SubmitNodeCollector collector, PoseStack poseStack) {
         Minecraft mc = Minecraft.getInstance();
 
         // ---- 1. Require a live in-world client player -----------------------------------
         if (mc.player == null || mc.level == null) return;
 
         // ---- 2. Activation key: Sneak must be held ------------------------------------
-        // keyShift is the 26.1 name for the sneak key (migration doc Part 3).
         if (!mc.options.keyShift.isDown()) return;
 
         // ---- 3. Selected shape must be a box (only the cuboid has an edge to preview) -
@@ -187,23 +116,11 @@ public final class ShapeGuideRenderer {
         Direction depthDir = Direction.getApproximateNearest(mc.player.getViewVector(1.0f));
         AABB bounds = shape.bounds(origin, depthDir);
 
-        // ---- Camera-relative translation ----------------------------------------------
-        // The PoseStack received from the event is at the camera origin (0,0,0 in eye space).
-        // ShapeRenderer expects the VoxelShape in world coords and subtracts dx/dy/dz from each
-        // vertex, so we pass the negative camera position to shift from world → camera space.
-        Camera camera = mc.gameRenderer.getMainCamera();
-        Vec3 camPos   = camera.position();
-
-        // ---- Draw the outline with ShapeRenderer -------------------------------------
-        // Signature: renderShape(PoseStack, VertexConsumer, VoxelShape, dx, dy, dz, argb, lineWidth)
+        // ---- Submit the outline via the 26.2 node collector ---------------------------
+        // submitShapeOutline takes a world-space VoxelShape.  The PoseStack is at camera
+        // origin (identity).  xray=true disables the depth test so lines show through walls.
+        // RenderTypes.lines() is the vanilla lines render type (unchanged from 26.1).
         VoxelShape voxelShape = Shapes.create(bounds);
-        VertexConsumer vc = bufferSource.getBuffer(LINES_NO_DEPTH);
-        ShapeRenderer.renderShape(
-                poseStack,
-                vc,
-                voxelShape,
-                -camPos.x, -camPos.y, -camPos.z,
-                GUIDE_COLOR_ARGB,
-                LINE_WIDTH);
+        collector.submitShapeOutline(poseStack, voxelShape, RenderTypes.lines(), GUIDE_COLOR_ARGB, LINE_WIDTH, true);
     }
 }

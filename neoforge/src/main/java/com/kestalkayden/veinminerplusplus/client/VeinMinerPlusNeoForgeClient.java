@@ -5,7 +5,6 @@ import org.lwjgl.glfw.GLFW;
 import com.kestalkayden.veinminerplusplus.VeinMinerPlus;
 import com.kestalkayden.veinminerplusplus.config.VeinMinerPlusConfig;
 import com.kestalkayden.veinminerplusplus.core.ClientShapeState;
-import com.kestalkayden.veinminerplusplus.core.MineShape;
 import com.kestalkayden.veinminerplusplus.core.ShapeState;
 import com.kestalkayden.veinminerplusplus.core.VeinMinerConfig;
 import com.kestalkayden.veinminerplusplus.network.ShapeSelectPayload;
@@ -14,7 +13,6 @@ import me.shedaniel.autoconfig.AutoConfigClient;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.resources.Identifier;
@@ -22,7 +20,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -41,9 +39,9 @@ import net.neoforged.neoforge.common.NeoForge;
  *   <li>Show an action-bar overlay message and send {@link ShapeSelectPayload} to the server via
  *       {@code Minecraft.getInstance().getConnection().send(new ServerboundCustomPayloadPacket(...))}
  *       — {@code PacketDistributor.sendToServer} is removed in 26.1.
- *   <li>Subscribe to {@link RenderLevelStageEvent.AfterTranslucentFeatures} (the specific subclass,
- *       not the abstract base — {@code RenderLevelStageEvent} is abstract in 26.1 and has no
- *       {@code getStage()} check) and delegate to {@link ShapeGuideRenderer}.
+ *   <li>Subscribe to {@link SubmitCustomGeometryEvent} (the 26.2 replacement for
+ *       {@code RenderLevelStageEvent} for custom world geometry — the stage event's javadoc forbids
+ *       geometry submission post-overhaul) and delegate to {@link ShapeGuideRenderer}.
  * </ol>
  */
 public final class VeinMinerPlusNeoForgeClient {
@@ -80,12 +78,12 @@ public final class VeinMinerPlusNeoForgeClient {
         // Key mapping registration fires on the mod event bus.
         modBus.addListener(VeinMinerPlusNeoForgeClient::onRegisterKeyMappings);
 
-        // Client tick and level render fire on the game/forge event bus.
+        // Client tick fires on the game/forge event bus.
         NeoForge.EVENT_BUS.addListener(VeinMinerPlusNeoForgeClient::onClientTick);
-        // Subscribe to the specific RenderLevelStageEvent subclass.
-        // In NeoForge 26.1 the base class is abstract — subscribing to it would not fire.
-        // AfterTranslucentFeatures is the correct stage for a translucent overlay.
-        NeoForge.EVENT_BUS.addListener(VeinMinerPlusNeoForgeClient::onRenderLevel);
+
+        // SubmitCustomGeometryEvent is the 26.2 event for custom world-space geometry.
+        // RenderLevelStageEvent's javadoc forbids geometry submission post-overhaul.
+        NeoForge.EVENT_BUS.addListener(VeinMinerPlusNeoForgeClient::onSubmitCustomGeometry);
 
         // Register the config screen factory so the mod-list "Config" button opens the
         // Cloth AutoConfig screen. IConfigScreenFactory is a client-only NeoForge extension
@@ -146,22 +144,15 @@ public final class VeinMinerPlusNeoForgeClient {
     }
 
     /**
-     * Subscribes to {@link RenderLevelStageEvent.AfterTranslucentFeatures} — the specific
-     * subclass, not the abstract base.  No {@code getStage()} guard needed in 26.1.
+     * Handles {@link SubmitCustomGeometryEvent} — the 26.2 NeoForge event for submitting
+     * custom world-space geometry into the frame graph.
      *
-     * <p>We obtain the {@link MultiBufferSource} from {@code Minecraft.getInstance().renderBuffers()
-     * .bufferSource()} because the NeoForge event does not carry one.  We must call
-     * {@code endBatch()} on the render type we used so the GPU buffer is flushed before the frame
-     * continues — otherwise the lines may not appear until the next frame (or later).
+     * <p>The event supplies a {@link net.minecraft.client.renderer.SubmitNodeCollector} and a
+     * {@link com.mojang.blaze3d.vertex.PoseStack} at the camera origin.  We delegate directly to
+     * {@link ShapeGuideRenderer#render} which calls {@code submitShapeOutline} with {@code xray=true}
+     * so the outline is visible through walls without needing a custom render pipeline.
      */
-    private static void onRenderLevel(RenderLevelStageEvent.AfterTranslucentFeatures event) {
-        Minecraft mc = Minecraft.getInstance();
-        MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-
-        // Delegate to the shared renderer (common code, no loader imports).
-        ShapeGuideRenderer.render(event.getPoseStack(), bufferSource);
-
-        // Flush immediately so the lines are submitted before the next render pass.
-        bufferSource.endBatch();
+    private static void onSubmitCustomGeometry(SubmitCustomGeometryEvent event) {
+        ShapeGuideRenderer.render(event.getSubmitNodeCollector(), event.getPoseStack());
     }
 }

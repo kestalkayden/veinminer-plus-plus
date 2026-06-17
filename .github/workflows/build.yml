@@ -158,11 +158,9 @@ jobs:
           changelog-file: ${{ needs.plan.outputs.changelog }}
           files: fabric/build/libs/!(*-@(sources|javadoc)).jar
           loaders: fabric
-          # The 26.1 line (all three exist on Modrinth); add 26.2 once that build lands.
+          # 26.2 (add 26.2.1+ here as they ship to Modrinth/CurseForge).
           game-versions: |
-            26.1
-            26.1.1
-            26.1.2
+            26.2
           version-type: release
           game-version-filter: none
           java: 25
@@ -184,9 +182,7 @@ jobs:
           files: neoforge/build/libs/!(*-@(sources|javadoc)).jar
           loaders: neoforge
           game-versions: |
-            26.1
-            26.1.1
-            26.1.2
+            26.2
           version-type: release
           game-version-filter: none
           java: 25
@@ -224,9 +220,7 @@ jobs:
           files: fabric/build/libs/!(*-@(sources|javadoc)).jar
           loaders: fabric
           game-versions: |
-            26.1
-            26.1.1
-            26.1.2
+            26.2
           version-type: release
           game-version-filter: none
           java: 25
@@ -240,9 +234,7 @@ jobs:
           files: neoforge/build/libs/!(*-@(sources|javadoc)).jar
           loaders: neoforge
           game-versions: |
-            26.1
-            26.1.1
-            26.1.2
+            26.2
           version-type: release
           game-version-filter: none
           java: 25
