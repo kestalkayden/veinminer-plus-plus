@@ -33,10 +33,9 @@ on:
         default: true
 
 # Release wiring: Modrinth project = veinminer-plus-plus, CurseForge project = 1578197; the
-# MODRINTH_TOKEN / CURSEFORGE_TOKEN secrets are configured. A v* tag publishes CurseForge +
-# GitHub Release now; Modrinth is held off by modrinth_enabled=false (gradle.properties) until
-# it has been tested. To ship Modrinth later: flip modrinth_enabled=true, then run this workflow
-# via workflow_dispatch (modrinth only, curseforge/github off) against the release tag.
+# MODRINTH_TOKEN / CURSEFORGE_TOKEN secrets are configured. A v* tag publishes both loaders to
+# Modrinth, CurseForge, and a GitHub Release. The neoforge_enabled / modrinth_enabled gates
+# (gradle.properties) can hold a loader or Modrinth back if ever needed (e.g. a staged release).
 
 jobs:
   # Normalize both triggers into plain boolean outputs. Tag push / PR / branch push =
