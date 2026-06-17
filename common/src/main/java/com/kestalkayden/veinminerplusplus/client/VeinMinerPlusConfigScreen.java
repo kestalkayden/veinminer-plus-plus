@@ -260,6 +260,12 @@ public class VeinMinerPlusConfigScreen extends Screen {
                     cfg.enableSpread,
                     val -> VeinMinerPlusConfig.get().enableSpread = val));
             addOption(OptionInstance.createBoolean(
+                    "veinminerplusplus.config.enableExtraShapes",
+                    OptionInstance.cachedConstantTooltip(
+                            Component.translatable("veinminerplusplus.config.enableExtraShapes.tooltip")),
+                    cfg.enableExtraShapes,
+                    val -> VeinMinerPlusConfig.get().enableExtraShapes = val));
+            addOption(OptionInstance.createBoolean(
                     "veinminerplusplus.config.alwaysShowGuide",
                     OptionInstance.cachedConstantTooltip(
                             Component.translatable("veinminerplusplus.config.alwaysShowGuide.tooltip")),

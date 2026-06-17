@@ -111,11 +111,12 @@ public final class VeinMiner {
         return true;
     }
 
-    /** 3x3x3 box: every block in the oriented cuboid that the player can mine for drops. */
+    /** Oriented box: every mineable block in the cuboid. No cap — a box breaks its full volume
+     *  (3x3x3=27, 5x5x5=125, 9x9x3=243); the shape is its own bound and the per-tick drain
+     *  ({@code blocksPerTick}) staggers the work so even a big box never spikes the server. */
     private static void collectBox(ServerLevel level, BlockPos origin, MineShape shape, Direction depthDir,
                                    ItemStack tool, Set<BlockPos> out) {
         for (BlockPos raw : shape.positions(origin, depthDir)) {
-            if (out.size() >= VeinMinerConfig.veinMax) break;
             BlockPos pos = raw.immutable();
             BlockState state = level.getBlockState(pos);
             if (state.isAir()) continue;

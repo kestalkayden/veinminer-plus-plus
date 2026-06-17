@@ -39,6 +39,9 @@
   "veinminerplusplus.config.enableSpread": "Enable Spread mode",
   "veinminerplusplus.config.enableSpread.tooltip": "When on, the larger Spread mode is added to the [ / ] cycle. Spread follows connected matching blocks like Vein but up to the (bigger) Spread cap.",
 
+  "veinminerplusplus.config.enableExtraShapes": "Enable extra shapes",
+  "veinminerplusplus.config.enableExtraShapes.tooltip": "When on, the larger box shapes (5x5x5 and 9x9x3) are added to the [ / ] cycle. Each breaks its full volume, oriented along your look direction, and is staggered over a few ticks.",
+
   "veinminerplusplus.config.alwaysShowGuide": "Always show shape guide",
   "veinminerplusplus.config.alwaysShowGuide.tooltip": "When on, the 3x3x3 edge guide is rendered continuously while sneaking, not just briefly after cycling shapes."
 }
