@@ -1,7 +1,7 @@
 {
   "veinminerplusplus.name": "Veinminer++",
   "veinminerplusplus.shape": "Shape: %s",
-  "key.categories.veinminerplusplus.main": "Veinminer++",
+  "key.category.veinminerplusplus.main": "Veinminer++",
   "key.veinminerplusplus.shape_prev": "Previous Shape",
   "key.veinminerplusplus.shape_next": "Next Shape",
 
