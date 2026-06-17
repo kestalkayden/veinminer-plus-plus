@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "veinminerplusplus",
+  "version": "${version}",
+  "name": "Veinminer++",
+  "description": "A performant, tool-aware vein miner: hold Sneak to break a whole vein, a 3x3x3, or a full tree — works with modded tools, with smart ore matching, tree-felling safety nets, and an in-game config.",
+  "authors": [
+    "Kestalkayden"
+  ],
+  "contact": {
+    "homepage": "https://github.com/kestalkayden/veinminer-plus-plus",
+    "sources": "https://github.com/kestalkayden/veinminer-plus-plus"
+  },
+  "license": "MIT",
+  "icon": "icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.kestalkayden.veinminerplusplus.VeinMinerPlusFabric"
+    ],
+    "client": [
+      "com.kestalkayden.veinminerplusplus.VeinMinerPlusFabricClient"
+    ],
+    "modmenu": [
+      "com.kestalkayden.veinminerplusplus.client.VeinMinerPlusModMenu"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "fabric-api": "*",
+    "minecraft": ">=26.1 <26.2",
+    "java": ">=25",
+    "cloth-config2": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}

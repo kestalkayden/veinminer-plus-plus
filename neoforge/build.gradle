@@ -1,0 +1,75 @@
+plugins {
+    id 'net.neoforged.moddev' version "${moddev_version}"
+    id 'maven-publish'
+}
+
+base {
+    archivesName = "${project.archives_base_name}-neoforge"
+}
+
+// Pull the loader-agnostic sources from ../common, same as the Fabric subproject.
+sourceSets {
+    main {
+        java {
+            srcDir '../common/src/main/java'
+        }
+    }
+}
+
+dependencies {
+    // Cloth Config for NeoForge — NOT bundled here; NeoForge packs it via the mod's own jar-in-jar
+    // or users install it separately. We compile against it; bundling is handled by Fabric only.
+    implementation "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
+}
+
+neoForge {
+    version = neoforge_version
+    validateAccessTransformers = false
+
+    mods {
+        veinminerplusplus {
+            sourceSet sourceSets.main
+        }
+    }
+
+    runs {
+        client { client() }
+        server { server() }
+        data { data() }
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    from('../shared-resources') {
+        exclude '**/*.java'
+    }
+
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand "version": project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+}
+
+java {
+    withSourcesJar()
+}
+
+jar {
+    from("../LICENSE") {
+        rename { "${it}_${base.archivesName.get()}" }
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}

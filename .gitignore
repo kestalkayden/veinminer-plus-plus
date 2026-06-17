@@ -1,0 +1,12 @@
+.gradle/
+build/
+out/
+run/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local-only store page copy (Modrinth/CurseForge descriptions) — kept on disk, not in the repo
+.github/store/
