@@ -7,6 +7,11 @@
 
   "veinminerplusplus.config.title": "Veinminer++ Settings",
 
+  "veinminerplusplus.config.section.limits": "Limits",
+  "veinminerplusplus.config.section.trees": "Tree felling",
+  "veinminerplusplus.config.section.tooling": "Tooling",
+  "veinminerplusplus.config.section.display": "Modes & display",
+
   "veinminerplusplus.config.veinMax": "Vein cap (blocks)",
   "veinminerplusplus.config.veinMax.tooltip": "Maximum blocks broken in one Vein action — the everyday mode. Kept small so casual vein-mining stays bounded (1–128).",
 

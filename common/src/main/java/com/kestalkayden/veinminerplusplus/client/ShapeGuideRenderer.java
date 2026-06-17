@@ -4,11 +4,17 @@ import com.kestalkayden.veinminerplusplus.core.ClientShapeState;
 import com.kestalkayden.veinminerplusplus.core.MineShape;
 import com.kestalkayden.veinminerplusplus.core.VeinMinerConfig;
 
+import com.mojang.blaze3d.pipeline.DepthStencilState;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.resources.Identifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
@@ -62,6 +68,28 @@ public final class ShapeGuideRenderer {
 
     /** Line width passed to {@link SubmitNodeCollector#submitShapeOutline}. */
     private static final float LINE_WIDTH = 2.0f;
+
+    /**
+     * A lines pipeline with the depth test disabled ({@link CompareOp#ALWAYS_PASS}, no depth write)
+     * so the outline shows through terrain — the xray effect from the 26.1 version.
+     *
+     * <p>26.2 removed every public depth-disabled lines RenderType and locked the builder pieces
+     * ({@code RenderPipelines.LINES_SNIPPET} is private, {@code RenderType.create} is
+     * package-private), so this rebuilds the custom pipeline with both reopened via the Fabric
+     * access widener / NeoForge access transformer ({@code lines_no_depth}). Seeded from
+     * {@code LINES_SNIPPET} so it inherits the vanilla lines shader + vertex format; only the
+     * depth-stencil state is overridden.
+     */
+    private static final RenderPipeline PIPELINE_LINES_NO_DEPTH =
+            RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
+                    .withLocation(Identifier.fromNamespaceAndPath("veinminerplusplus", "lines_no_depth"))
+                    .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
+                    .build();
+
+    /** The {@link RenderType} that wraps {@link #PIPELINE_LINES_NO_DEPTH} for submission. */
+    private static final RenderType LINES_NO_DEPTH = RenderType.create(
+            "veinminerplusplus:lines_no_depth",
+            RenderSetup.builder(PIPELINE_LINES_NO_DEPTH).createRenderSetup());
 
     // -------------------------------------------------------------------------
     // Private constructor — all methods are static
@@ -117,10 +145,16 @@ public final class ShapeGuideRenderer {
         AABB bounds = shape.bounds(origin, depthDir);
 
         // ---- Submit the outline via the 26.2 node collector ---------------------------
-        // submitShapeOutline takes a world-space VoxelShape.  The PoseStack is at camera
-        // origin (identity).  xray=true disables the depth test so lines show through walls.
-        // RenderTypes.lines() is the vanilla lines render type (unchanged from 26.1).
+        // The PoseStack from the render event is at the CAMERA origin, so a world-space shape must
+        // be shifted by -cameraPos to land at the target block. submitShapeOutline transforms the
+        // shape by the pose only — it does NOT subtract the camera itself (the 26.1 path did this
+        // via ShapeRenderer's dx/dy/dz args, which the migration dropped → outline drawn off in
+        // world space, invisible). xray=true disables the depth test so lines show through walls.
         VoxelShape voxelShape = Shapes.create(bounds);
-        collector.submitShapeOutline(poseStack, voxelShape, RenderTypes.lines(), GUIDE_COLOR_ARGB, LINE_WIDTH, true);
+        var camPos = mc.gameRenderer.mainCamera().position();
+        poseStack.pushPose();
+        poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
+        collector.submitShapeOutline(poseStack, voxelShape, LINES_NO_DEPTH, GUIDE_COLOR_ARGB, LINE_WIDTH, true);
+        poseStack.popPose();
     }
 }

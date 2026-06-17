@@ -88,8 +88,7 @@ public final class VeinMinerPlusNeoForgeClient {
         // hand-built vanilla screen. IConfigScreenFactory is a client-only NeoForge extension
         // point -- safe here because this constructor only runs when dist == CLIENT.
         modContainer.registerExtensionPoint(IConfigScreenFactory.class,
-                (container, parent) -> new VeinMinerPlusConfigScreen(parent,
-                        Minecraft.getInstance().options));
+                (container, parent) -> new VeinMinerPlusConfigScreen(parent));
     }
 
     // -------------------------------------------------------------------------

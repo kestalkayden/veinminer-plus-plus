@@ -30,6 +30,8 @@ dependencies {
 }
 
 loom {
+    accessWidenerPath = file("src/main/resources/veinminerplusplus.accesswidener")
+
     mods {
         "veinminerplusplus" {
             sourceSet sourceSets.main

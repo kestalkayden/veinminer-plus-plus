@@ -3,8 +3,6 @@ package com.kestalkayden.veinminerplusplus.client;
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
 
-import net.minecraft.client.Minecraft;
-
 /**
  * ModMenu integration -- supplies the "Config" button on the Fabric mod list screen.
  *
@@ -20,6 +18,6 @@ public class VeinMinerPlusModMenu implements ModMenuApi {
      */
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
-        return parent -> new VeinMinerPlusConfigScreen(parent, Minecraft.getInstance().options);
+        return parent -> new VeinMinerPlusConfigScreen(parent);
     }
 }
