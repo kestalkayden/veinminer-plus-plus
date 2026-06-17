@@ -6,6 +6,7 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /** The selectable mining modes, cycled with the {@code [} / {@code ]} keys.
  *
@@ -113,5 +114,35 @@ public enum MineShape {
             if (p.getZ() + 1 > maxZ) maxZ = p.getZ() + 1;
         }
         return new AABB(minX, minY, minZ, maxX, maxY, maxZ);
+    }
+
+    /** The cardinal direction the oriented box should extend — straight into {@code block} through
+     *  the face the player's look ray enters. The guide and the miner both call this so they orient
+     *  identically and intuitively: the box bores into the face you're aimed at, at any view angle.
+     *
+     *  <p>This replaces snapping to the look vector's dominant axis, which at steep angles tips the
+     *  box into the floor/ceiling instead of the wall face you clicked. It's a ray/box slab test
+     *  from {@code eye} along {@code look}: the entry face is the axis whose near plane the ray
+     *  crosses last, and the box extends along {@code look}'s sign on that axis. */
+    public static Direction directionInto(Vec3 eye, Vec3 look, BlockPos block) {
+        double bestT = Double.NEGATIVE_INFINITY;
+        Direction.Axis entryAxis = Direction.Axis.Z;
+        for (Direction.Axis axis : Direction.Axis.values()) {
+            double dir = axis.choose(look.x, look.y, look.z);
+            if (dir == 0.0) continue;                       // ray parallel to this axis' faces
+            double from = axis.choose(eye.x, eye.y, eye.z);
+            double min  = axis.choose((double) block.getX(), (double) block.getY(), (double) block.getZ());
+            double nearPlane = (dir > 0) ? min : min + 1.0; // the slab plane the ray enters from
+            double t = (nearPlane - from) / dir;
+            if (t > bestT) {
+                bestT = t;
+                entryAxis = axis;
+            }
+        }
+        // The box extends along look's sign on the entry axis (i.e. into the block, away from you).
+        double ex = entryAxis == Direction.Axis.X ? Math.signum(look.x) : 0.0;
+        double ey = entryAxis == Direction.Axis.Y ? Math.signum(look.y) : 0.0;
+        double ez = entryAxis == Direction.Axis.Z ? Math.signum(look.z) : 0.0;
+        return Direction.getApproximateNearest(new Vec3(ex, ey, ez));
     }
 }

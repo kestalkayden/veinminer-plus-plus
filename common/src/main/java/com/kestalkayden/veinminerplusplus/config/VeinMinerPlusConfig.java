@@ -69,7 +69,7 @@ public class VeinMinerPlusConfig {
 
     /** Durability cost as a percentage of vanilla per block: 100 = vanilla, 0 = free, 150 = 1.5x.
      *  Range: 0-150. */
-    public int durabilityPercent = 80;
+    public int durabilityPercent = 65;
 
     /** When on, the 3x3x3 edge guide is shown continuously while sneaking, not just after cycling. */
     public boolean alwaysShowGuide = false;

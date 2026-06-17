@@ -34,10 +34,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * gone.  Geometry is submitted to the frame graph through a {@link SubmitNodeCollector} obtained
  * from the Fabric {@code LevelRenderContext} or the NeoForge {@code SubmitCustomGeometryEvent}.
  *
- * <p>We use {@link SubmitNodeCollector#submitShapeOutline} with {@code xray=true} (last {@code boolean}
- * parameter) which disables the depth test so the outline is visible through walls — the same
- * xray effect the 26.1 version achieved via a custom {@code RenderPipeline}.  No custom pipeline
- * registration is required.
+ * <p>We submit via {@link SubmitNodeCollector#submitShapeOutline}; the last {@code boolean} is the
+ * render phase, not depth. The xray (depth-test disable) comes from the custom
+ * {@link #PIPELINE_LINES_NO_DEPTH} pipeline ({@code ALWAYS_PASS}), which is registered and
+ * (optionally) mapped to Iris's LINES program so it survives Sodium/Iris — see the pipeline field.
  *
  * <h3>Visibility rules (checked every frame in {@link #render})</h3>
  * <ol>
@@ -80,16 +80,26 @@ public final class ShapeGuideRenderer {
      * {@code LINES_SNIPPET} so it inherits the vanilla lines shader + vertex format; only the
      * depth-stencil state is overridden.
      */
-    private static final RenderPipeline PIPELINE_LINES_NO_DEPTH =
+    private static final RenderPipeline PIPELINE_LINES_NO_DEPTH = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
                     .withLocation(Identifier.fromNamespaceAndPath("veinminerplusplus", "lines_no_depth"))
                     .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
-                    .build();
+                    .build());
+    // register() the pipeline: an UNregistered custom pipeline draws in vanilla but Sodium/Iris
+    // silently drop it. register() (private; reopened via the access widener / transformer) adds it
+    // to the shared list those mods scan, so the guide renders in-pack.
 
     /** The {@link RenderType} that wraps {@link #PIPELINE_LINES_NO_DEPTH} for submission. */
     private static final RenderType LINES_NO_DEPTH = RenderType.create(
             "veinminerplusplus:lines_no_depth",
             RenderSetup.builder(PIPELINE_LINES_NO_DEPTH).createRenderSetup());
+
+    static {
+        // Optional Iris support: route our pipeline through Iris's LINES program so the see-through
+        // guide survives an active shaderpack (Iris draws only geometry tied to a program it knows).
+        // No-op without Iris — see IrisCompat.
+        IrisCompat.assignToLinesProgram(PIPELINE_LINES_NO_DEPTH);
+    }
 
     // -------------------------------------------------------------------------
     // Private constructor — all methods are static
@@ -139,9 +149,11 @@ public final class ShapeGuideRenderer {
 
         // ---- Compute the oriented bounding box ----------------------------------------
         BlockPos origin  = bhr.getBlockPos();
-        // Direction.getApproximateNearest returns the cardinal direction closest to the
-        // view vector — the same orientation VeinMiner uses to lay out the cuboid.
-        Direction depthDir = Direction.getApproximateNearest(mc.player.getViewVector(1.0f));
+        // Orient by the FACE the look ray enters (MineShape.directionInto), not the look vector's
+        // dominant axis — so the box always bores into the face you're aimed at, and the guide
+        // matches VeinMiner (same helper) at any view angle.
+        Direction depthDir = MineShape.directionInto(
+                mc.player.getEyePosition(1.0f), mc.player.getViewVector(1.0f), origin);
         AABB bounds = shape.bounds(origin, depthDir);
 
         // ---- Submit the outline via the 26.2 node collector ---------------------------

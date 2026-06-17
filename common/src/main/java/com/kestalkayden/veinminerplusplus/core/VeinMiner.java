@@ -62,7 +62,7 @@ public final class VeinMiner {
         Deque<Target> queue = new ArrayDeque<>();
 
         if (shape.isBox()) {
-            Direction depthDir = Direction.getApproximateNearest(player.getLookAngle());
+            Direction depthDir = MineShape.directionInto(player.getEyePosition(), player.getLookAngle(), origin);
             Set<BlockPos> box = new HashSet<>();
             collectBox(level, origin, shape, depthDir, tool, box);
             box.remove(origin.immutable());
