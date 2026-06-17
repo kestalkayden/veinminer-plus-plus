@@ -191,9 +191,11 @@ public final class ShapeGuideRenderer {
 
         // ---- Compute the oriented bounding box ----------------------------------------
         BlockPos origin  = bhr.getBlockPos();
-        // Direction.getApproximateNearest returns the cardinal direction closest to the
-        // view vector — the same orientation VeinMiner uses to lay out the cuboid.
-        Direction depthDir = Direction.getApproximateNearest(mc.player.getViewVector(1.0f));
+        // Orient by the FACE the look ray enters (MineShape.directionInto), not the look vector's
+        // dominant axis — so the box always bores into the face you're aimed at, and the guide
+        // matches VeinMiner (same helper) at any view angle.
+        Direction depthDir = MineShape.directionInto(
+                mc.player.getEyePosition(1.0f), mc.player.getViewVector(1.0f), origin);
         AABB bounds = shape.bounds(origin, depthDir);
 
         // ---- Camera-relative translation ----------------------------------------------
