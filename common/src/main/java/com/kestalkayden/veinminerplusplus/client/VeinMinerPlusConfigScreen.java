@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.kestalkayden.veinminerplusplus.config.VeinMinerPlusConfig;
 
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -14,6 +15,7 @@ import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
+import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
@@ -45,7 +47,7 @@ import org.jspecify.annotations.Nullable;
  *   ────────── Modes & display ───────────  (HeaderEntry)
  *     Enable Spread mode         [on/off]   (OptionEntry)
  *     Always show shape guide    [on/off]   (OptionEntry)
- *                   [ Done ]               (footer button)
+ *      [ Open config folder ]  [ Done ]     (footer buttons, side by side)
  * </pre>
  *
  * <h3>Loader safety</h3>
@@ -105,9 +107,19 @@ public class VeinMinerPlusConfigScreen extends Screen {
     protected void init() {
         layout.addTitleHeader(TITLE, font);
         list = layout.addToContents(new ConfigList(minecraft, width, this));
-        layout.addToFooter(
+        // Two side-by-side footer buttons. The footer is a FrameLayout, which stacks every child
+        // centred at the same spot — so wrap the pair in a horizontal LinearLayout (the vanilla
+        // ConfirmScreen pattern) to lay them out next to each other instead of overlapping.
+        LinearLayout footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
+        footer.addChild(
+                Button.builder(
+                        Component.translatable("veinminerplusplus.config.openConfigFolder"),
+                        b -> Util.getPlatform().openUri(VeinMinerPlusConfig.getConfigDir().toUri()))
+                      .width(150)
+                      .build());
+        footer.addChild(
                 Button.builder(CommonComponents.GUI_DONE, b -> onClose())
-                      .width(200)
+                      .width(150)
                       .build());
         layout.visitWidgets(this::addRenderableWidget);
         repositionElements();
@@ -250,6 +262,12 @@ public class VeinMinerPlusConfigScreen extends Screen {
                     new OptionInstance.IntRange(0, 150),
                     cfg.durabilityPercent,
                     val -> VeinMinerPlusConfig.get().durabilityPercent = val));
+            addOption(OptionInstance.createBoolean(
+                    "veinminerplusplus.config.voidBasicMaterials",
+                    OptionInstance.cachedConstantTooltip(
+                            Component.translatable("veinminerplusplus.config.voidBasicMaterials.tooltip")),
+                    cfg.voidBasicMaterials,
+                    val -> VeinMinerPlusConfig.get().voidBasicMaterials = val));
 
             // ---- Modes & display ----
             addHeader("veinminerplusplus.config.section.display");

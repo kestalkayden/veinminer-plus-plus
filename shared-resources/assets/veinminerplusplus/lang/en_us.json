@@ -27,6 +27,11 @@
   "veinminerplusplus.config.durabilityPercent": "Durability cost",
   "veinminerplusplus.config.durabilityPercent.tooltip": "Durability cost per block as a percentage of vanilla: 100 = normal, 0 = free, 150 = 50% more. Unbreaking still applies on top (0–150).",
 
+  "veinminerplusplus.config.voidBasicMaterials": "Void basic materials",
+  "veinminerplusplus.config.voidBasicMaterials.tooltip": "When on, common blocks (stone, dirt, cobblestone, deepslate, gravel…) broken by vein-mining are deleted instead of dropped, keeping the loot you care about. Edit the list in void-blocks.txt (use \"Open config folder\"). Your own broken block still drops; voided blocks still cost durability.",
+
+  "veinminerplusplus.config.openConfigFolder": "Open config folder",
+
   "veinminerplusplus.config.smartTrees": "Smart tree detection",
   "veinminerplusplus.config.smartTrees.tooltip": "When on, breaking a log only fells the tree if leaves are attached to its logs — so log and wood-block houses are left intact. Turn off to fell any connected logs.",
 
