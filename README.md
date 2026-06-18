@@ -1,12 +1,13 @@
 # Veinminer++
 
-A performant, tool-aware vein miner for Minecraft 26.1.x (Fabric + NeoForge).
+A performant, tool-aware vein miner for Minecraft 26.2 (Fabric + NeoForge).
 
 **Hold Sneak while you break a block** and Veinminer++ mines the whole connected
 vein — any block your tool can actually collect, not just ores — staggered across
-ticks so it never freezes the server. Cycle between a connectivity Vein, a 3×3×3
-box, and an opt-in larger Spread; fell whole trees (with a safety net for wooden
-builds); and tune limits, durability cost, and tool requirements in-game.
+ticks so it never freezes the server. Cycle between a connectivity Vein, box shapes
+(3×3×3, plus opt-in 5×5×5 and 9×9×3), and an opt-in larger Spread; fell whole trees
+(with a safety net for wooden builds); optionally void common materials; and tune
+limits, durability cost, and tool requirements in-game.
 
 Built around a shared `common/` code path so the mining logic is byte-identical
 on both loaders.
@@ -16,16 +17,21 @@ on both loaders.
 - **Activate:** hold **Sneak** (crouch) while breaking a block. The block you hit
   is mined by vanilla as usual; Veinminer++ adds the rest of the vein.
 - **Cycle shape:** `[` previous / `]` next. The active shape is shown on the
-  action bar, and the 3×3×3 box briefly draws an xray-style edge guide.
+  action bar, and box shapes briefly draw an xray-style edge guide.
 - One vein runs at a time per player; it drains a few blocks per tick until done.
 
 ## Shapes
 
-| Shape | What it does | Cap (default) |
+| Shape | What it does | Volume / cap |
 |---|---|---|
 | **Vein** *(default)* | Flood-fills connected matching blocks (26-connected, diagonals included). Follows ore veins and like-for-like blocks. | `veinMax` = 32 |
-| **3×3×3** | An oriented cube in front of you — depth follows your look direction. Mines every block in it you can collect. | `veinMax` |
-| **Spread** *(opt-in)* | Same connectivity flood as Vein, but with the larger cap. Only appears in the `[` / `]` cycle when enabled. | `spreadMax` = 256 |
+| **3×3×3** | An oriented cube in front of you — depth extends from the face you break. Mines every block in it you can collect. | full volume (27) |
+| **5×5×5** *(opt-in)* | A larger oriented cube. Appears in the cycle only when **Enable extra shapes** is on. | full volume (125) |
+| **9×9×3** *(opt-in)* | A wide, shallow slab (9 wide × 9 deep × 3 tall) for clearing floors and ceilings. Needs **Enable extra shapes**. | full volume (243) |
+| **Spread** *(opt-in)* | The same connectivity flood as Vein, but with the larger cap. Needs **Enable Spread mode**. | `spreadMax` = 256 |
+
+Box shapes break their full volume (no block cap); the per-tick stagger keeps even
+a 243-block slab from spiking the server.
 
 ## Features
 
@@ -46,36 +52,40 @@ on both loaders.
   too, dropping the same loot leaves give on decay (saplings, sticks, apples) at no
   durability cost. Canopies shared with a neighbouring tree, or oversized merged
   canopies, are left to decay normally.
+- **Void basic materials** *(opt-in):* turn it on and common blocks (stone, dirt,
+  grass, cobblestone, deepslate, gravel, sand…) broken by vein-mining are deleted
+  instead of dropped, so your inventory keeps only the loot you care about. The list
+  is hand-editable in `config/veinminerplusplus/void-blocks.txt`; voided blocks
+  still cost durability, and the block you break yourself is voided too.
 - **Performant:** capped block counts and a lenient per-tick stagger spread big
   veins and trees across several ticks instead of a single frame spike.
 - **Durability control:** per-block durability cost is a configurable percentage of
-  vanilla (0 % = free, 100 % = normal, up to 150 %). Unbreaking still applies, and
-  felling stops one hit before your tool would break.
-- **In-game config:** Cloth Config screen — via ModMenu on Fabric, or the built-in
-  mod list on NeoForge.
+  vanilla (0 % = free, 100 % = normal, up to 150 %), accumulated across the vein so
+  the percentage is exact even below 100 %. Unbreaking still applies, and vein-mining
+  stops one hit before your tool would break.
+- **In-game config:** a native, vanilla-style settings screen — opened via ModMenu
+  on Fabric, or the built-in mod list (Config button) on NeoForge. No Cloth Config
+  dependency.
 
 ## Configuration
 
-All options live in the in-game config screen (and `config/veinminerplusplus.json`).
+All options live in the in-game config screen; both config files are in
+`config/veinminerplusplus/` (`config.json`, plus the hand-edited `void-blocks.txt`).
 
 | Option | Default | Range | Description |
 |---|---|---|---|
 | Vein cap | 32 | 1–128 | Max blocks broken in one Vein action. |
 | Spread cap | 256 | 1–1024 | Max blocks for the larger, opt-in Spread mode. |
 | Tree cap | 256 | 1–512 | Max logs felled from one tree. |
-| Smart tree detection | on | — | Only fell connected logs when leaves are attached (protects wooden builds). |
-| Clear leaves of felled trees | on | — | Clear an isolated felled tree's canopy with decay-equivalent drops. |
 | Blocks broken per tick | 16 | 1–64 | Stagger rate — higher is faster but heavier on the server. |
 | Require a tool | off | — | Require a tool in hand to vein-mine soft blocks (hard blocks always need the correct tool). |
+| Durability cost (%) | 40 | 0–150 | Durability per block as a percentage of vanilla (accumulated, so the % is exact). |
+| Void basic materials | off | — | Delete common blocks (listed in `void-blocks.txt`) instead of dropping them. |
+| Smart tree detection | on | — | Only fell connected logs when leaves are attached (protects wooden builds). |
+| Clear leaves of felled trees | on | — | Clear an isolated felled tree's canopy with decay-equivalent drops. |
 | Enable Spread mode | off | — | Add Spread to the `[` / `]` cycle. |
-| Durability cost (%) | 80 | 0–150 | Durability per block as a percentage of vanilla. |
-| Always show shape guide | off | — | Keep the 3×3×3 edge guide visible while sneaking, not just after cycling. |
-
-## Roadmap
-
-- **26.2 support** (released June 2026) once dependencies are ready — 26.1.x is the
-  current target.
-- Publishing to Modrinth and CurseForge (GitHub Releases first).
+| Enable extra shapes | off | — | Add the 5×5×5 and 9×9×3 boxes to the `[` / `]` cycle. |
+| Always show shape guide | off | — | Keep the box edge guide visible while sneaking, not just after cycling. |
 
 ## Architecture
 
@@ -95,11 +105,11 @@ Outputs to `fabric/build/libs/` and `neoforge/build/libs/`.
 
 ## Requirements
 
-- Minecraft 26.1 – 26.1.2 (26.2 support planned)
+- Minecraft 26.2
 - Java 25
-- **Fabric:** Fabric Loader 0.18.4+ and Fabric API. Cloth Config is bundled;
-  ModMenu is optional (adds the config button).
-- **NeoForge:** NeoForge 26.1+ and Cloth Config (NeoForge build).
+- **Fabric:** Fabric Loader 0.18.4+ and Fabric API. ModMenu is optional (adds the
+  config button).
+- **NeoForge:** NeoForge 26.2+.
 
 ## License
 

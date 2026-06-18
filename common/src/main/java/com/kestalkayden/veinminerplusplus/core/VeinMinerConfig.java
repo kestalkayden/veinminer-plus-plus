@@ -1,5 +1,9 @@
 package com.kestalkayden.veinminerplusplus.core;
 
+import java.util.Set;
+
+import net.minecraft.world.level.block.Block;
+
 /** Mutable config holder with sane defaults, read by the shared core.
  *
  *  <p>Kept as plain static fields so the core reads it with no loader or library dependency. The
@@ -40,10 +44,18 @@ public final class VeinMinerConfig {
     public static boolean enableExtraShapes = false;
 
     /** Per-block durability cost multiplier: 0.0 (free) .. 1.5 (50% extra); 1.0 = vanilla. */
-    public static double durabilityMultiplier = 0.65;
+    public static double durabilityMultiplier = 0.40;
 
     /** Always render the shape edge guide while the activation key is held (box modes only). */
     public static boolean alwaysShowGuide = false;
+
+    /** When true, vein-mined blocks in {@link #voidBlocks} are deleted with no drops/XP (they still
+     *  cost durability). The block the player breaks themselves always drops normally. */
+    public static boolean voidBasicMaterials = false;
+
+    /** Resolved set of blocks voided when {@link #voidBasicMaterials} is on. Populated from the
+     *  hand-edited void-blocks.txt by VeinMinerPlusConfig. */
+    public static Set<Block> voidBlocks = Set.of();
 
     private VeinMinerConfig() {}
 }

@@ -18,8 +18,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
 /** Loader-agnostic vein-mining core, shared by both loaders.
  *
@@ -38,6 +40,12 @@ public final class VeinMiner {
 
     private static final Map<UUID, Deque<Target>> JOBS = new HashMap<>();
 
+    /** Per-player fractional durability debt (a remainder &lt; 1.0 carried between blocks). The
+     *  durability multiplier costs a fraction of a point per block (e.g. 0.40); accumulating that
+     *  here and spending whole points as the debt crosses 1.0 keeps the percentage honest instead of
+     *  rounding every block to 0 or a full point. */
+    private static final Map<UUID, Double> DURABILITY_DEBT = new HashMap<>();
+
     /** Set while we break queued blocks so the loader's break hook ignores those breaks. */
     private static boolean breaking = false;
 
@@ -48,7 +56,9 @@ public final class VeinMiner {
     }
 
     /** Entry from the loader block-break hook. {@code originState} is the block the player broke;
-     *  vanilla handles the origin itself, so it is never queued. */
+     *  vanilla handles the origin itself, so it is never queued — except that when voiding is on and
+     *  the origin is a void block, the drops vanilla just spawned for it are cleared so voiding stays
+     *  consistent (no stray drop from the block you swing at). */
     public static void onBlockBroken(ServerPlayer player, ServerLevel level, BlockPos origin, BlockState originState) {
         if (breaking) return;                            // re-entrancy from our own breaks
         if (originState.isAir()) return;
@@ -57,6 +67,15 @@ public final class VeinMiner {
 
         ItemStack tool = player.getMainHandItem();
         if (!canMine(originState, tool)) return;         // the player couldn't collect this anyway
+
+        // Voiding also covers the block the player breaks directly. This is a post-break hook, so
+        // vanilla has already spawned the origin's drops — clear the items that just appeared in its
+        // space so "void basic materials" doesn't leave one stray drop per swing.
+        if (VeinMinerConfig.voidBasicMaterials && VeinMinerConfig.voidBlocks.contains(originState.getBlock())) {
+            for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, new AABB(origin))) {
+                item.discard();
+            }
+        }
 
         MineShape shape = ShapeState.get(player.getUUID());
         Deque<Target> queue = new ArrayDeque<>();
@@ -240,6 +259,7 @@ public final class VeinMiner {
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
             if (player == null) {                 // logged off mid-vein — drop the job
                 it.remove();
+                DURABILITY_DEBT.remove(entry.getKey());
                 continue;
             }
 
@@ -250,10 +270,20 @@ public final class VeinMiner {
                 int budget = VeinMinerConfig.blocksPerTick;
                 while (budget-- > 0 && !queue.isEmpty()) {
                     Target target = queue.poll();
-                    if (level.getBlockState(target.pos()).isAir()) continue; // changed/decayed since queued
+                    BlockState state = level.getBlockState(target.pos());
+                    if (state.isAir()) continue; // changed/decayed since queued
                     if (target.leaf()) {
                         // Decay-equivalent drops (no tool, no fortune) and no durability cost.
                         level.destroyBlock(target.pos(), true);
+                    } else if (VeinMinerConfig.voidBasicMaterials
+                            && VeinMinerConfig.voidBlocks.contains(state.getBlock())) {
+                        // Void: delete with no drops/XP, but still charge durability per the % setting.
+                        ItemStack tool = player.getMainHandItem();
+                        if (tool.isDamageableItem() && tool.getDamageValue() >= tool.getMaxDamage() - 1) {
+                            continue;
+                        }
+                        level.destroyBlock(target.pos(), false);
+                        chargeVoidDurability(player);
                     } else {
                         ItemStack tool = player.getMainHandItem();
                         // Stop felling one hit before the tool would break; leaves (free) still finish.
@@ -275,18 +305,42 @@ public final class VeinMiner {
         }
     }
 
-    /** Rescale the durability vanilla just consumed by the configured multiplier. mult &lt; 1.0
-     *  refunds part of the cost (0.0 = free); mult &gt; 1.0 charges extra. Respects Unbreaking and
-     *  never lets the tool reach 0. */
+    /** Re-charge a vein-mined block's durability at the configured multiplier. Vanilla has already
+     *  applied its raw cost (post-Unbreaking) as {@code vanillaDelta}; we undo that and feed
+     *  {@code vanillaDelta * mult} through the fractional accumulator, so a sub-1.0 per-block cost
+     *  accumulates rather than rounding to 0 (or up to a full point) every block. mult &lt; 1.0
+     *  reduces wear (0.0 = free); mult &gt; 1.0 charges extra; Unbreaking is preserved because we
+     *  scale the delta it already reduced. */
     private static void applyDurabilityMultiplier(ServerPlayer player, int damageBefore) {
         double mult = VeinMinerConfig.durabilityMultiplier;
-        if (mult == 1.0) return;
+        if (mult == 1.0) return;                            // vanilla cost is already correct
         ItemStack tool = player.getMainHandItem();
         if (tool.isEmpty() || !tool.isDamageableItem()) return;
         int vanillaDelta = tool.getDamageValue() - damageBefore;
-        if (vanillaDelta <= 0) return;
-        int scaled = (int) Math.round(vanillaDelta * mult);
-        int newDamage = Math.max(0, Math.min(tool.getMaxDamage() - 1, damageBefore + scaled));
+        if (vanillaDelta <= 0) return;                      // Unbreaking absorbed this hit
+        tool.setDamageValue(damageBefore);                  // undo vanilla's raw charge...
+        chargeScaled(player, tool, vanillaDelta * mult);    // ...re-apply the scaled cost via the debt
+    }
+
+    /** Charge a voided block's durability. Voiding deletes the block with no vanilla break to scale,
+     *  so each voided block costs one block's worth ({@code 1.0 * mult}) through the same accumulator.
+     *  Unbreaking is not applied here (there is no vanilla damage event), so voiding wears the tool a
+     *  touch more than mining the same block normally. */
+    private static void chargeVoidDurability(ServerPlayer player) {
+        ItemStack tool = player.getMainHandItem();
+        if (tool.isEmpty() || !tool.isDamageableItem()) return;
+        chargeScaled(player, tool, VeinMinerConfig.durabilityMultiplier);
+    }
+
+    /** Add {@code cost} durability points to the player's running debt and spend the whole-number
+     *  part now, carrying the fractional remainder to the next block. Clamps so the tool always
+     *  keeps at least one point (it never breaks from vein-mining). */
+    private static void chargeScaled(ServerPlayer player, ItemStack tool, double cost) {
+        double debt = DURABILITY_DEBT.getOrDefault(player.getUUID(), 0.0) + cost;
+        int whole = (int) Math.floor(debt);
+        DURABILITY_DEBT.put(player.getUUID(), debt - whole);
+        if (whole <= 0) return;
+        int newDamage = Math.min(tool.getMaxDamage() - 1, tool.getDamageValue() + whole);
         tool.setDamageValue(newDamage);
     }
 }
