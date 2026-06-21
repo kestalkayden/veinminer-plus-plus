@@ -115,9 +115,10 @@ public final class ShapeGuideRenderer {
      * Evaluate visibility conditions and, if met, draw the cuboid outline.
      *
      * <p>The caller supplies the {@link SubmitNodeCollector} and the {@link PoseStack} obtained
-     * from the render event.  The PoseStack is identity at the camera origin; the
-     * {@link VoxelShape} is submitted in world coordinates.  {@code submitShapeOutline} with
-     * {@code xray=true} handles camera-relative projection and depth-test disabling internally.
+     * from the render event.  The PoseStack is identity at the camera origin, so this method
+     * translates it by {@code -cameraPos} to position the world-space {@link VoxelShape}.  The
+     * final {@code submitShapeOutline} boolean is {@code afterTerrain} (render phase, not depth);
+     * the see-through (depth-test disable) comes from the {@link #PIPELINE_LINES_NO_DEPTH} pipeline.
      *
      * @param collector  the node collector from the current frame's render event
      * @param poseStack  the frame PoseStack (camera-relative, identity at call time)
@@ -161,7 +162,8 @@ public final class ShapeGuideRenderer {
         // be shifted by -cameraPos to land at the target block. submitShapeOutline transforms the
         // shape by the pose only — it does NOT subtract the camera itself (the 26.1 path did this
         // via ShapeRenderer's dx/dy/dz args, which the migration dropped → outline drawn off in
-        // world space, invisible). xray=true disables the depth test so lines show through walls.
+        // world space, invisible). The final submitShapeOutline arg is afterTerrain (render phase,
+        // not depth); the see-through effect is PIPELINE_LINES_NO_DEPTH's ALWAYS_PASS, not this flag.
         VoxelShape voxelShape = Shapes.create(bounds);
         var camPos = mc.gameRenderer.mainCamera().position();
         poseStack.pushPose();

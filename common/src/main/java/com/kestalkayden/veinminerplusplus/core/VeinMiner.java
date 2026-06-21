@@ -184,6 +184,7 @@ public final class VeinMiner {
         }
 
         boolean isolated = true;
+        canopy:
         while (!frontier.isEmpty() && leaves.size() < cap) {
             BlockPos current = frontier.poll();
             for (int dx = -1; dx <= 1; dx++) {
@@ -195,6 +196,7 @@ public final class VeinMiner {
                         BlockState state = level.getBlockState(next);
                         if (state.is(BlockTags.LOGS)) {
                             isolated = false;   // a log outside the felled tree supports this canopy
+                            break canopy;       // verdict sealed — nothing can flip it back to isolated
                         } else if (state.is(BlockTags.LEAVES)) {
                             leaves.add(next);
                             frontier.add(next);
