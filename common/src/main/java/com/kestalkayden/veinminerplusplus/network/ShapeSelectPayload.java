@@ -3,7 +3,7 @@ package com.kestalkayden.veinminerplusplus.network;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import com.kestalkayden.veinminerplusplus.VeinMinerPlus;
 import com.kestalkayden.veinminerplusplus.core.MineShape;
@@ -21,7 +21,7 @@ public record ShapeSelectPayload(int shapeOrdinal) implements CustomPacketPayloa
     /** Wire ID. */
     public static final CustomPacketPayload.Type<ShapeSelectPayload> TYPE =
             new CustomPacketPayload.Type<>(
-                    Identifier.fromNamespaceAndPath(VeinMinerPlus.MOD_ID, "shape_select"));
+                    ResourceLocation.fromNamespaceAndPath(VeinMinerPlus.MOD_ID, "shape_select"));
 
     /**
      * StreamCodec over {@link RegistryFriendlyByteBuf}, as required by Fabric's

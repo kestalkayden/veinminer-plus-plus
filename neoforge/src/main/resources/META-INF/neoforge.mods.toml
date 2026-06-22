@@ -17,13 +17,13 @@ logoFile="icon.png"
 [[dependencies.veinminerplusplus]]
 modId="neoforge"
 type="required"
-versionRange="[26.1,)"
+versionRange="[21.1.234,)"
 ordering="NONE"
 side="BOTH"
 
 [[dependencies.veinminerplusplus]]
 modId="minecraft"
 type="required"
-versionRange="[26.1,26.2)"
+versionRange="[1.21.1,1.21.2)"
 ordering="NONE"
 side="BOTH"

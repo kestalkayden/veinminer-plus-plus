@@ -2,7 +2,6 @@ package com.kestalkayden.veinminerplusplus.client;
 
 import org.lwjgl.glfw.GLFW;
 
-import com.kestalkayden.veinminerplusplus.VeinMinerPlus;
 import com.kestalkayden.veinminerplusplus.core.ClientShapeState;
 import com.kestalkayden.veinminerplusplus.core.MineShape;
 import com.kestalkayden.veinminerplusplus.core.ShapeState;
@@ -11,10 +10,8 @@ import com.kestalkayden.veinminerplusplus.network.ShapeSelectPayload;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
-import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
@@ -27,20 +24,19 @@ import net.neoforged.neoforge.common.NeoForge;
  * NeoForge client-side logic -- registered only when the dist is CLIENT.
  *
  * <p>Instantiated by {@link com.kestalkayden.veinminerplusplus.VeinMinerPlusNeoForge} after a
- * {@link net.neoforged.fml.loading.FMLEnvironment#getDist()} check so that this class (and its
+ * {@link net.neoforged.fml.loading.FMLEnvironment#dist} check so that this class (and its
  * client-only imports) is never loaded on a dedicated server.
  *
  * <p>Responsibilities:
  * <ol>
- *   <li>Register the keybind category and the two key mappings via {@link RegisterKeyMappingsEvent}.
+ *   <li>Register the two key mappings (under a string category) via {@link RegisterKeyMappingsEvent}.
  *   <li>Poll the keys each {@link ClientTickEvent.Post}, cycle the local shape, and write to
  *       {@link ClientShapeState}.
  *   <li>Show an action-bar overlay message and send {@link ShapeSelectPayload} to the server via
- *       {@code Minecraft.getInstance().getConnection().send(new ServerboundCustomPayloadPacket(...))}
- *       — {@code PacketDistributor.sendToServer} is removed in 26.1.
- *   <li>Subscribe to {@link RenderLevelStageEvent.AfterTranslucentFeatures} (the specific subclass,
- *       not the abstract base — {@code RenderLevelStageEvent} is abstract in 26.1 and has no
- *       {@code getStage()} check) and delegate to {@link ShapeGuideRenderer}.
+ *       {@code Minecraft.getInstance().getConnection().send(new ServerboundCustomPayloadPacket(...))}.
+ *   <li>Subscribe to {@link RenderLevelStageEvent} and, on the
+ *       {@link RenderLevelStageEvent.Stage#AFTER_TRANSLUCENT_BLOCKS} stage, delegate to
+ *       {@link ShapeGuideRenderer}.
  *   <li>Register the mod config screen via {@link IConfigScreenFactory} so the mod-list
  *       "Config" button opens the hand-built {@link VeinMinerPlusConfigScreen}.
  * </ol>
@@ -51,9 +47,9 @@ public final class VeinMinerPlusNeoForgeClient {
     // Keybind category
     // -------------------------------------------------------------------------
 
-    /** Category shown as "Veinminer++" in the Controls screen. */
-    private static final KeyMapping.Category CATEGORY = new KeyMapping.Category(
-            Identifier.fromNamespaceAndPath(VeinMinerPlus.MOD_ID, "main"));
+    /** Category translation key shown as "Veinminer++" in the Controls screen (1.21.1 string
+     *  category; the typed {@code KeyMapping.Category} arrived in 26.x). */
+    private static final String CATEGORY = "key.category.veinminerplusplus.main";
 
     // -------------------------------------------------------------------------
     // Key mappings
@@ -81,9 +77,6 @@ public final class VeinMinerPlusNeoForgeClient {
 
         // Client tick and level render fire on the game/forge event bus.
         NeoForge.EVENT_BUS.addListener(VeinMinerPlusNeoForgeClient::onClientTick);
-        // Subscribe to the specific RenderLevelStageEvent subclass.
-        // In NeoForge 26.1 the base class is abstract — subscribing to it would not fire.
-        // AfterTranslucentFeatures is the correct stage for a translucent overlay.
         NeoForge.EVENT_BUS.addListener(VeinMinerPlusNeoForgeClient::onRenderLevel);
 
         // Register the config screen factory so the mod-list "Config" button opens our
@@ -98,8 +91,7 @@ public final class VeinMinerPlusNeoForgeClient {
     // -------------------------------------------------------------------------
 
     private static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
-        // Register the category first so the Controls screen can group the mappings under it.
-        event.registerCategory(CATEGORY);
+        // 1.21.1 has no category registration — the string category groups the mappings in Controls.
         event.register(KEY_PREV_SHAPE);
         event.register(KEY_NEXT_SHAPE);
     }
@@ -130,12 +122,11 @@ public final class VeinMinerPlusNeoForgeClient {
             }
 
             // Show the chosen shape on the action bar overlay.
-            client.player.sendOverlayMessage(
-                    Component.translatable("veinminerplusplus.shape", ClientShapeState.current.label));
+            client.player.displayClientMessage(
+                    Component.translatable("veinminerplusplus.shape", ClientShapeState.current.label), true);
 
-            // Send C2S packet. PacketDistributor.sendToServer() is removed in NeoForge 26.1;
-            // the correct approach is to wrap the payload in ServerboundCustomPayloadPacket and
-            // send it directly via the active connection.
+            // Send C2S packet: wrap the payload in ServerboundCustomPayloadPacket and send it
+            // directly via the active connection.
             if (client.getConnection() != null) {
                 client.getConnection().send(
                         new ServerboundCustomPayloadPacket(
@@ -145,22 +136,13 @@ public final class VeinMinerPlusNeoForgeClient {
     }
 
     /**
-     * Subscribes to {@link RenderLevelStageEvent.AfterTranslucentFeatures} — the specific
-     * subclass, not the abstract base.  No {@code getStage()} guard needed in 26.1.
-     *
-     * <p>We obtain the {@link MultiBufferSource} from {@code Minecraft.getInstance().renderBuffers()
-     * .bufferSource()} because the NeoForge event does not carry one.  We must call
-     * {@code endBatch()} on the render type we used so the GPU buffer is flushed before the frame
-     * continues — otherwise the lines may not appear until the next frame (or later).
+     * On {@link RenderLevelStageEvent}, draw the guide during
+     * {@link RenderLevelStageEvent.Stage#AFTER_TRANSLUCENT_BLOCKS} — the correct stage for a
+     * translucent overlay that must appear in front of the world. The renderer draws in immediate
+     * mode (RenderSystem + Tesselator), so it only needs the frame PoseStack.
      */
-    private static void onRenderLevel(RenderLevelStageEvent.AfterTranslucentFeatures event) {
-        Minecraft mc = Minecraft.getInstance();
-        MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-
-        // Delegate to the shared renderer (common code, no loader imports).
-        ShapeGuideRenderer.render(event.getPoseStack(), bufferSource);
-
-        // Flush immediately so the lines are submitted before the next render pass.
-        bufferSource.endBatch();
+    private static void onRenderLevel(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
+        ShapeGuideRenderer.render(event.getPoseStack());
     }
 }

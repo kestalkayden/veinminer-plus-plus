@@ -5,7 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.kestalkayden.veinminerplusplus.core.VeinMinerConfig;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 
 import java.io.IOException;
@@ -301,7 +301,7 @@ public class VeinMinerPlusConfig {
         }
         Set<Block> resolved = new HashSet<>();
         for (String id : ids) {
-            Identifier rl = Identifier.tryParse(id);
+            ResourceLocation rl = ResourceLocation.tryParse(id);
             if (rl != null) {
                 BuiltInRegistries.BLOCK.getOptional(rl).ifPresent(resolved::add);
             }

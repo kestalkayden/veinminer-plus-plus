@@ -5,10 +5,10 @@ import java.util.List;
 
 import com.kestalkayden.veinminerplusplus.config.VeinMinerPlusConfig;
 
-import net.minecraft.util.Util;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
@@ -20,15 +20,12 @@ import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Hand-built vanilla config screen for Veinminer++ — single-column, full-width layout.
  *
- * <p>Replaces the previous {@link net.minecraft.client.gui.screens.options.OptionsSubScreen} +
- * {@link net.minecraft.client.gui.components.OptionsList#addSmall} two-column grid with a custom
- * {@link ContainerObjectSelectionList} that places each option on its own full-width row, grouped
- * under four centred section headers.
+ * <p>Built from a custom {@link ContainerObjectSelectionList} that places each option on its own
+ * full-width row, grouped under four centred section headers.
  *
  * <h3>Layout (top to bottom)</h3>
  * <pre>
@@ -55,20 +52,12 @@ import org.jspecify.annotations.Nullable;
  * or NeoForge symbols. It is referenced only from client-guarded call sites
  * ({@code VeinMinerPlusModMenu} on Fabric, {@code VeinMinerPlusNeoForgeClient} on NeoForge).
  *
- * <h3>MC 26.2 API used</h3>
- * <ul>
- *   <li>{@link ContainerObjectSelectionList} — scrolling list base that hosts interactive widgets.
- *   <li>{@link ContainerObjectSelectionList.Entry} — entry type that implements
- *       {@code ContainerEventHandler}; requires {@code extractContent}, {@code children},
- *       and {@code narratables}.
- *   <li>{@link OptionInstance#createButton(net.minecraft.client.Options, int, int, int)} — creates
- *       the slider or toggle widget at a given position and width.
- *   <li>{@link AbstractWidget#extractRenderState} — 26.2's render dispatch method on widgets.
- *   <li>{@link StringWidget} — used inside {@link ConfigList.HeaderEntry} to render the centred
- *       section title; positioned via {@code setPosition} before each
- *       {@code extractRenderState} call.
- *   <li>{@link HeaderAndFooterLayout} — manages the title strip, scrolling list, and Done button.
- * </ul>
+ * <h3>1.21.1 GUI render path</h3>
+ * <p>1.21.1 predates the 26.x GUI render-state system ({@code GuiGraphicsExtractor} /
+ * {@code extractRenderState}); rendering is classic immediate-mode through {@link GuiGraphics}.
+ * Each list entry overrides {@link ContainerObjectSelectionList.Entry#render} and positions its
+ * widget from the row geometry the list passes in ({@code top}/{@code left}/{@code width}), then
+ * calls {@link AbstractWidget#render(GuiGraphics, int, int, float)}.
  */
 public class VeinMinerPlusConfigScreen extends Screen {
 
@@ -80,7 +69,7 @@ public class VeinMinerPlusConfigScreen extends Screen {
     private final Screen parent;
 
     /** The custom scrolling list; non-null after {@link #init()}. */
-    private @Nullable ConfigList list;
+    private ConfigList list;
 
     /** Manages the header (title), scrollable contents (list), and footer (Done button). */
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this);
@@ -173,14 +162,12 @@ public class VeinMinerPlusConfigScreen extends Screen {
         /** Height of a section header row (single line of text, plus a little padding). */
         private static final int HEADER_ROW_HEIGHT = 18;
 
-        /** Reference to the owning screen so option entries can read {@code screen.width}. */
-        private final Screen screen;
-
         ConfigList(Minecraft minecraft, int screenWidth, Screen screen) {
             // height and y are set via updateSize() from repositionElements(); pass 0 for now.
             super(minecraft, screenWidth, 0, 0, OPTION_ROW_HEIGHT);
+            // Fill the content area top-down (header/footer layout owns the vertical bounds) rather
+            // than vertically centring the rows.
             this.centerListVertically = false;
-            this.screen = screen;
             populateEntries();
         }
 
@@ -292,11 +279,11 @@ public class VeinMinerPlusConfigScreen extends Screen {
         }
 
         private void addHeader(String langKey) {
-            addEntry(new HeaderEntry(Component.translatable(langKey), minecraft), HEADER_ROW_HEIGHT);
+            addEntry(new HeaderEntry(Component.translatable(langKey), minecraft));
         }
 
         private void addOption(OptionInstance<?> option) {
-            addEntry(new OptionEntry(option, minecraft, screen), OPTION_ROW_HEIGHT);
+            addEntry(new OptionEntry(option, minecraft));
         }
 
         // =====================================================================
@@ -316,8 +303,7 @@ public class VeinMinerPlusConfigScreen extends Screen {
          * A non-interactive row that renders a centred section title.
          *
          * <p>Uses a {@link StringWidget} for narration support, positioned to the horizontal
-         * centre of the row each frame (the row's X/width are updated by the list before
-         * {@code extractContent} is called).
+         * centre of the row each frame.
          */
         static final class HeaderEntry extends AbstractEntry {
 
@@ -329,18 +315,13 @@ public class VeinMinerPlusConfigScreen extends Screen {
             }
 
             @Override
-            public void extractContent(
-                    GuiGraphicsExtractor graphics,
-                    int mouseX, int mouseY,
-                    boolean hovered,
-                    float a) {
-                // Centre the text within the row. getContentXMiddle() is the horizontal midpoint
-                // of this entry's content area (getX() + CONTENT_PADDING + getContentWidth()/2).
-                int textWidth = this.widget.getWidth();
-                int centreX = this.getContentXMiddle() - textWidth / 2;
-                int centreY = this.getContentY() + (this.getContentHeight() - 9) / 2;
+            public void render(GuiGraphics guiGraphics, int index, int top, int left, int width, int height,
+                               int mouseX, int mouseY, boolean hovering, float partialTick) {
+                // Centre the text within the row.
+                int centreX = left + (width - this.widget.getWidth()) / 2;
+                int centreY = top + (height - 9) / 2;
                 this.widget.setPosition(centreX, centreY);
-                this.widget.extractRenderState(graphics, mouseX, mouseY, a);
+                this.widget.render(guiGraphics, mouseX, mouseY, partialTick);
             }
 
             /** The header is non-interactive — no focusable children. */
@@ -366,32 +347,24 @@ public class VeinMinerPlusConfigScreen extends Screen {
          *
          * <p>{@link OptionInstance#createButton(net.minecraft.client.Options, int, int, int)} is
          * called once at construction time with {@code width = ROW_WIDTH} so the slider/toggle is
-         * full-width. The X/Y position is updated in {@code extractContent} before each
-         * {@code extractRenderState} call, matching the pattern used by
-         * {@link net.minecraft.client.gui.components.OptionsList.Entry}'s big-entry factory.
+         * full-width. The X/Y position is updated in {@link #render} before each draw.
          */
         static final class OptionEntry extends AbstractEntry {
 
             private final AbstractWidget widget;
-            private final Screen screen;
 
-            OptionEntry(OptionInstance<?> option, Minecraft minecraft, Screen screen) {
-                this.screen = screen;
-                // Create the button at position (0,0); we reposition in extractContent.
+            OptionEntry(OptionInstance<?> option, Minecraft minecraft) {
+                // Create the button at position (0,0); we reposition in render().
                 this.widget = option.createButton(minecraft.options, 0, 0, ROW_WIDTH);
             }
 
             @Override
-            public void extractContent(
-                    GuiGraphicsExtractor graphics,
-                    int mouseX, int mouseY,
-                    boolean hovered,
-                    float a) {
+            public void render(GuiGraphics guiGraphics, int index, int top, int left, int width, int height,
+                               int mouseX, int mouseY, boolean hovering, float partialTick) {
                 // Centre the widget horizontally within the row.
-                // getContentXMiddle() == getX() + CONTENT_PADDING + getContentWidth()/2
-                int widgetX = this.getContentXMiddle() - this.widget.getWidth() / 2;
-                this.widget.setPosition(widgetX, this.getContentY());
-                this.widget.extractRenderState(graphics, mouseX, mouseY, a);
+                int widgetX = left + (width - this.widget.getWidth()) / 2;
+                this.widget.setPosition(widgetX, top);
+                this.widget.render(guiGraphics, mouseX, mouseY, partialTick);
             }
 
             /** The widget is the sole interactive child for keyboard/mouse event routing. */

@@ -266,7 +266,7 @@ public final class VeinMiner {
             }
 
             Deque<Target> queue = entry.getValue();
-            ServerLevel level = player.level();
+            ServerLevel level = player.serverLevel();
             breaking = true;
             try {
                 int budget = VeinMinerConfig.blocksPerTick;

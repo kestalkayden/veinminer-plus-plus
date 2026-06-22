@@ -10,25 +10,23 @@ import com.kestalkayden.veinminerplusplus.network.ShapeSelectPayload;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 
 /**
  * Fabric client entrypoint — runs only on the client dist.
  *
  * <p>Responsibilities (client-only; the serverbound payload + receiver live in the main initializer):
  * <ol>
- *   <li>Register the two keybind categories and mappings via {@link KeyMappingHelper}.
+ *   <li>Register the two keybinds (under a string category) via {@link KeyBindingHelper}.
  *   <li>Poll the keys each client tick, cycle the local shape, write to {@link ClientShapeState},
  *       display an action-bar message, and send a {@link ShapeSelectPayload} to the server.
- *   <li>Register the {@link LevelRenderEvents#AFTER_TRANSLUCENT_FEATURES} callback that delegates
- *       to {@link ShapeGuideRenderer} for the xray-esque cuboid outline.
+ *   <li>Register the {@link WorldRenderEvents#AFTER_TRANSLUCENT} callback that delegates to
+ *       {@link ShapeGuideRenderer} for the xray-esque cuboid outline.
  * </ol>
  */
 public class VeinMinerPlusFabricClient implements ClientModInitializer {
@@ -37,23 +35,23 @@ public class VeinMinerPlusFabricClient implements ClientModInitializer {
     // Keybind category
     // -------------------------------------------------------------------------
 
-    /** Keybind category identifier — shown as "Veinminer++" in Controls. */
-    private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(
-            Identifier.fromNamespaceAndPath(VeinMinerPlus.MOD_ID, "main"));
+    /** Keybind category translation key — shown as "Veinminer++" in Controls (1.21.1 uses a
+     *  string category; the typed {@code KeyMapping.Category} arrived in 26.x). */
+    private static final String CATEGORY = "key.category.veinminerplusplus.main";
 
     // -------------------------------------------------------------------------
     // Key mappings
     // -------------------------------------------------------------------------
 
     /** Cycle to the previous shape. Default: [ */
-    public static final KeyMapping KEY_PREV_SHAPE = KeyMappingHelper.registerKeyMapping(
+    public static final KeyMapping KEY_PREV_SHAPE = KeyBindingHelper.registerKeyBinding(
             new KeyMapping(
                     "key.veinminerplusplus.shape_prev",
                     GLFW.GLFW_KEY_LEFT_BRACKET,
                     CATEGORY));
 
     /** Cycle to the next shape. Default: ] */
-    public static final KeyMapping KEY_NEXT_SHAPE = KeyMappingHelper.registerKeyMapping(
+    public static final KeyMapping KEY_NEXT_SHAPE = KeyBindingHelper.registerKeyBinding(
             new KeyMapping(
                     "key.veinminerplusplus.shape_next",
                     GLFW.GLFW_KEY_RIGHT_BRACKET,
@@ -72,18 +70,10 @@ public class VeinMinerPlusFabricClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
 
         // Register the world-render callback for the shape guide outline.
-        // AFTER_TRANSLUCENT_FEATURES fires after translucent geometry is submitted — the correct
-        // stage for a translucent-blended overlay that must appear in front of the world.
-        // The LevelRenderContext provides poseStack(); we obtain the bufferSource from Minecraft
-        // directly (context has no bufferSource() method in this Fabric API version).
-        LevelRenderEvents.AFTER_TRANSLUCENT_FEATURES.register(ctx -> {
-            Minecraft mc = Minecraft.getInstance();
-            MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-            ShapeGuideRenderer.render(ctx.poseStack(), bufferSource);
-            // Flush the batch immediately so our LINES_NO_DEPTH vertices are dispatched before
-            // subsequent render passes assume the buffer is clean.
-            bufferSource.endBatch();
-        });
+        // AFTER_TRANSLUCENT fires after translucent geometry is drawn — the correct stage for a
+        // translucent-blended overlay that must appear in front of the world. The renderer draws
+        // in immediate mode (RenderSystem + Tesselator), so it only needs the frame PoseStack.
+        WorldRenderEvents.AFTER_TRANSLUCENT.register(ctx -> ShapeGuideRenderer.render(ctx.matrixStack()));
     }
 
     // -------------------------------------------------------------------------
@@ -112,8 +102,8 @@ public class VeinMinerPlusFabricClient implements ClientModInitializer {
             }
 
             // Show the active shape name on the action bar (the hotbar-area overlay line).
-            client.player.sendOverlayMessage(
-                    Component.translatable("veinminerplusplus.shape", ClientShapeState.current.label));
+            client.player.displayClientMessage(
+                    Component.translatable("veinminerplusplus.shape", ClientShapeState.current.label), true);
 
             // Tell the server what we picked.
             ClientPlayNetworking.send(new ShapeSelectPayload(ClientShapeState.current.ordinal()));

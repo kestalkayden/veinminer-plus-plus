@@ -143,6 +143,7 @@ public enum MineShape {
         double ex = entryAxis == Direction.Axis.X ? Math.signum(look.x) : 0.0;
         double ey = entryAxis == Direction.Axis.Y ? Math.signum(look.y) : 0.0;
         double ez = entryAxis == Direction.Axis.Z ? Math.signum(look.z) : 0.0;
-        return Direction.getApproximateNearest(new Vec3(ex, ey, ez));
+        // 1.21.1: getNearest(x, y, z); the Vec3/getApproximateNearest overloads arrived in 1.21.2+.
+        return Direction.getNearest(ex, ey, ez);
     }
 }

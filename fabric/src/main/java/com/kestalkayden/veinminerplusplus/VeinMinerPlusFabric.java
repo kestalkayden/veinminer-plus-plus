@@ -43,7 +43,7 @@ public class VeinMinerPlusFabric implements ModInitializer {
 
         // Register the C2S shape-select payload and its server receiver HERE (main init), not in
         // the client entrypoint -- so a dedicated server registers them too. The client only sends.
-        PayloadTypeRegistry.serverboundPlay().register(
+        PayloadTypeRegistry.playC2S().register(
                 ShapeSelectPayload.TYPE, ShapeSelectPayload.STREAM_CODEC);
         ServerPlayNetworking.registerGlobalReceiver(
                 ShapeSelectPayload.TYPE,

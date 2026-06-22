@@ -1,7 +1,22 @@
-plugins {
-    id 'net.fabricmc.fabric-loom' version "${loom_version}"
-    id 'maven-publish'
+// Loom 1.7.x is applied via the legacy buildscript classpath, not the `plugins {}` DSL.
+// Reason: the Fabric maven only publishes plugin *markers* for loom 1.14.0+, and loom 1.14+
+// added a `notObfuscated()` guard that wrongly trips on obfuscated 1.21.1 (those builds target
+// the 26.x non-obfuscated game, refuse officialMojangMappings, and drop the modImplementation
+// configuration needed to remap intermediary access wideners). Loom 1.7.4 has no such guard and
+// builds obfuscated 1.21.1, but has no plugin marker — so we pull its main artifact directly here.
+buildscript {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath "net.fabricmc:fabric-loom:${loom_version}"
+    }
 }
+
+apply plugin: 'fabric-loom'
+apply plugin: 'maven-publish'
 
 base {
     archivesName = "${project.archives_base_name}-fabric"
@@ -20,18 +35,18 @@ sourceSets {
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    // No `mappings` line — Minecraft 26.1 is deobfuscated and ships Mojang's official names.
+    // 1.21.1 is OBFUSCATED — map to Mojang's official names so common/ (written against official
+    // names) compiles. modImplementation (below) lets loom remap intermediary access wideners.
+    mappings loom.officialMojangMappings()
 
-    implementation "net.fabricmc:fabric-loader:${loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 
     // ModMenu — NOT bundled; it is a standalone mod that users install themselves.
-    implementation "com.terraformersmc:modmenu:${modmenu_version}"
+    modImplementation "com.terraformersmc:modmenu:${modmenu_version}"
 }
 
 loom {
-    accessWidenerPath = file("src/main/resources/veinminerplusplus.accesswidener")
-
     mods {
         "veinminerplusplus" {
             sourceSet sourceSets.main
@@ -58,7 +73,7 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
+    it.options.release = 21
 }
 
 java {

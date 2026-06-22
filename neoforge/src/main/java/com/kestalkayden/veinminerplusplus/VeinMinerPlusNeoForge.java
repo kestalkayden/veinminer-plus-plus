@@ -17,7 +17,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -46,7 +46,7 @@ public class VeinMinerPlusNeoForge {
 
         // Guard client-only code behind a dist check so the client class is never loaded on a
         // dedicated server (which would fail because client-only Minecraft classes are absent).
-        if (FMLEnvironment.getDist() == Dist.CLIENT) {
+        if (FMLEnvironment.dist == Dist.CLIENT) {
             new VeinMinerPlusNeoForgeClient(modBus, modContainer);
         }
     }
@@ -76,7 +76,10 @@ public class VeinMinerPlusNeoForge {
     // Game event handlers
     // -------------------------------------------------------------------------
 
-    private static void onBlockBreak(BreakBlockEvent event) {
+    private static void onBlockBreak(BlockEvent.BreakEvent event) {
+        // 1.21.1 fires BlockEvent.BreakEvent (cancelable, pre-removal). VeinMiner queues the vein
+        // and drains it next tick — by which point vanilla has removed the origin block — so the
+        // pre/post-removal timing relative to the Fabric AFTER hook is immaterial to the result.
         if (!(event.getLevel() instanceof ServerLevel level)) return;
         if (!(event.getPlayer() instanceof ServerPlayer player)) return;
         VeinMiner.onBlockBroken(player, level, event.getPos(), event.getState());
