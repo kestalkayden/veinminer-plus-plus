@@ -15,6 +15,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -71,9 +72,14 @@ public class VeinMinerPlusFabricClient implements ClientModInitializer {
 
         // Register the world-render callback for the shape guide outline.
         // AFTER_TRANSLUCENT fires after translucent geometry is drawn — the correct stage for a
-        // translucent-blended overlay that must appear in front of the world. The renderer draws
-        // in immediate mode (RenderSystem + Tesselator), so it only needs the frame PoseStack.
-        WorldRenderEvents.AFTER_TRANSLUCENT.register(ctx -> ShapeGuideRenderer.render(ctx.matrixStack()));
+        // translucent-blended overlay that must appear in front of the world. We hand the renderer
+        // the frame PoseStack and a buffer source (1.21.5 routes geometry through RenderType +
+        // MultiBufferSource), then flush the batch immediately so the lines are dispatched this frame.
+        WorldRenderEvents.AFTER_TRANSLUCENT.register(ctx -> {
+            MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
+            ShapeGuideRenderer.render(ctx.matrixStack(), bufferSource);
+            bufferSource.endBatch();
+        });
     }
 
     // -------------------------------------------------------------------------

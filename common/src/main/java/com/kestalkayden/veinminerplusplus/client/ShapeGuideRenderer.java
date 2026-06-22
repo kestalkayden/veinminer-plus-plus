@@ -1,51 +1,56 @@
 package com.kestalkayden.veinminerplusplus.client;
 
+import java.util.OptionalDouble;
+
 import com.kestalkayden.veinminerplusplus.core.ClientShapeState;
 import com.kestalkayden.veinminerplusplus.core.MineShape;
 import com.kestalkayden.veinminerplusplus.core.VeinMinerConfig;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.platform.DepthTestFunction;
+import com.mojang.blaze3d.shaders.UniformType;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.CoreShaders;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderStateShard;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.ShapeRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * Renders an xray-esque (depth-test-disabled) outline of the currently selected cuboid shape
  * centred on the block the player is looking at.  Call {@link #render} from both loaders'
  * AFTER_TRANSLUCENT world-render hook.
  *
- * <h3>1.21.x render path (pre-RenderPipeline)</h3>
+ * <h3>1.21.5 render path (early RenderPipeline)</h3>
  *
- * <p>1.21.x predates the {@code RenderPipeline}/{@code RenderSetup} rework (1.21.6) and the
- * {@code SubmitNodeCollector} rework (26.2).  Rendering is classic immediate-mode: we set GL state
- * via {@link RenderSystem}, build the 12 box edges into a {@link BufferBuilder} from the shared
- * {@link Tesselator}, and draw them straight away with {@link BufferUploader#drawWithShader}.
+ * <p>The RenderPipeline rework landed in 1.21.5 (immediate-mode {@code RenderSystem.setShader} /
+ * {@code BufferUploader} are gone). Geometry is batched through a {@link RenderType} backed by a
+ * {@link RenderPipeline} and flushed by the caller's {@link MultiBufferSource.BufferSource}.
  *
- * <p>The xray (see-through) effect comes from {@link RenderSystem#disableDepthTest()} around the
- * draw — no custom no-depth {@code RenderType} (and so no access widener) is needed.  The vertices
- * are baked camera-relative via the event {@link PoseStack} (translated by {@code -cameraPos}), so
- * {@code drawWithShader} transforms them with the live world model-view/projection exactly as the
- * vanilla line batch would.
+ * <p>The xray (see-through) effect comes from a custom pipeline that mirrors vanilla's lines
+ * pipeline but uses {@link DepthTestFunction#NO_DEPTH_TEST} (and no depth write). Vanilla's
+ * {@code RenderPipelines.LINES_SNIPPET} is package-private, so the pipeline is rebuilt from scratch
+ * with the same shaders/uniforms/format ({@code core/rendertype_lines}, {@code POSITION_COLOR_NORMAL}
+ * lines, translucent blend, no cull). {@link RenderType#create} and the composite-state builder's
+ * setters are reopened via the access widener / access transformer ({@code lines_no_depth}).
  *
- * <p>Shader-pack note: under Iris/OptiFine shaders the manual draw is best-effort (Iris draws only
- * geometry tied to a program it knows); the guide renders in vanilla and under Sodium.  The
- * shader-program routing the 26.x build does via {@code IrisApi.assignPipeline} has no pre-pipeline
- * equivalent, so it is simply omitted here.
+ * <p>Shader-pack note: the custom pipeline is not registered with Sodium/Iris (1.21.5 has no public
+ * {@code RenderPipelines.register}), so under shaders the guide is best-effort; it renders in vanilla.
  *
  * <h3>Visibility rules (checked every frame in {@link #render})</h3>
  * <ol>
@@ -67,11 +72,49 @@ public final class ShapeGuideRenderer {
      *  {@code VeinMinerConfig.alwaysShowGuide == false}. */
     private static final long GUIDE_TICKS = 40L;
 
-    /** Color of the guide outline — cyan with 50 % alpha (packed {@code 0xAARRGGBB}). */
+    /** Color of the guide outline — cyan with 50 % alpha (packed {@code 0xAARRGGBB}), as accepted
+     *  by {@link ShapeRenderer#renderShape}. */
     private static final int GUIDE_COLOR_ARGB = 0x8030E0FF;  // α=0x80, r=0x30, g=0xE0, b=0xFF
 
-    /** Line width for {@link RenderSystem#lineWidth}. */
-    private static final float LINE_WIDTH = 2.0f;
+    /** Fixed line width baked into the RenderType's line state. */
+    private static final double LINE_WIDTH = 2.0;
+
+    // -------------------------------------------------------------------------
+    // Custom no-depth lines pipeline + RenderType
+    // -------------------------------------------------------------------------
+
+    /**
+     * A lines {@link RenderPipeline} identical to vanilla's (shaders {@code core/rendertype_lines},
+     * {@code LineWidth}/{@code ScreenSize} uniforms, translucent blend, no cull,
+     * {@code POSITION_COLOR_NORMAL} in {@code LINES} mode) but with the depth test disabled and no
+     * depth write — fragments win regardless of terrain depth (the xray effect).
+     */
+    private static final RenderPipeline PIPELINE_LINES_NO_DEPTH = RenderPipeline.builder()
+            .withLocation(ResourceLocation.fromNamespaceAndPath("veinminerplusplus", "pipeline/lines_no_depth"))
+            .withVertexShader("core/rendertype_lines")
+            .withFragmentShader("core/rendertype_lines")
+            .withUniform("LineWidth", UniformType.FLOAT)
+            .withUniform("ScreenSize", UniformType.VEC2)
+            .withBlend(BlendFunction.TRANSLUCENT)
+            .withCull(false)
+            .withVertexFormat(DefaultVertexFormat.POSITION_COLOR_NORMAL, VertexFormat.Mode.LINES)
+            .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+            .withDepthWrite(false)
+            .build();
+
+    /**
+     * The {@link RenderType} that batches vertices for {@link #PIPELINE_LINES_NO_DEPTH}. Mirrors
+     * vanilla {@code RenderType.lines()} (buffer size 1536, line state) minus the depth-dependent
+     * layering/output shards (unnecessary with depth disabled). {@code RenderType.create} and the
+     * builder setters are reopened by the access widener / access transformer.
+     */
+    private static final RenderType LINES_NO_DEPTH = RenderType.create(
+            "veinminerplusplus:lines_no_depth",
+            1536,
+            PIPELINE_LINES_NO_DEPTH,
+            RenderType.CompositeState.builder()
+                    .setLineState(new RenderStateShard.LineStateShard(OptionalDouble.of(LINE_WIDTH)))
+                    .createCompositeState(false));
 
     private ShapeGuideRenderer() {}
 
@@ -80,15 +123,15 @@ public final class ShapeGuideRenderer {
     // -------------------------------------------------------------------------
 
     /**
-     * Evaluate visibility conditions and, if met, draw the cuboid outline.
+     * Evaluate visibility conditions and, if met, draw the cuboid outline into {@code bufferSource}.
      *
-     * <p>The caller supplies the frame {@link PoseStack} from its render event (camera-relative,
-     * identity at the camera origin).  This method translates it by {@code -cameraPos} so the
-     * world-space box lands at the target block, then draws the edges in immediate mode.
+     * <p>The caller supplies the frame {@link PoseStack} (camera-relative, identity at the camera
+     * origin) and a {@link MultiBufferSource} to batch into; it flushes the batch after this returns.
      *
-     * @param poseStack the frame PoseStack (camera-relative, identity at call time)
+     * @param poseStack    the frame PoseStack (camera-relative, identity at call time)
+     * @param bufferSource the batch to write the line vertices into
      */
-    public static void render(PoseStack poseStack) {
+    public static void render(PoseStack poseStack, MultiBufferSource bufferSource) {
         Minecraft mc = Minecraft.getInstance();
 
         // ---- 1. Require a live in-world client player -----------------------------------
@@ -122,46 +165,14 @@ public final class ShapeGuideRenderer {
                 mc.player.getEyePosition(1.0f), mc.player.getViewVector(1.0f), origin);
         AABB bounds = shape.bounds(origin, depthDir);
 
-        // ---- Draw the outline in immediate mode ---------------------------------------
+        // ---- Submit the outline -------------------------------------------------------
+        // The PoseStack is at the camera origin, so ShapeRenderer's dx/dy/dz shift the world-space
+        // shape into camera space (negative camera position).
         Camera camera = mc.gameRenderer.getMainCamera();
         Vec3 camPos   = camera.getPosition();
-
-        float a = ((GUIDE_COLOR_ARGB >> 24) & 0xFF) / 255.0f;
-        float r = ((GUIDE_COLOR_ARGB >> 16) & 0xFF) / 255.0f;
-        float g = ((GUIDE_COLOR_ARGB >>  8) & 0xFF) / 255.0f;
-        float b = ( GUIDE_COLOR_ARGB        & 0xFF) / 255.0f;
-
-        // GL state for see-through translucent lines.
-        // 1.21.2+ shader system: setShader takes a ShaderProgram (CoreShaders.RENDERTYPE_LINES);
-        // the Supplier<ShaderInstance> + GameRenderer.getRendertypeLinesShader form is 1.21.1-only.
-        RenderSystem.setShader(CoreShaders.RENDERTYPE_LINES);
-        RenderSystem.lineWidth(LINE_WIDTH);
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableDepthTest();   // xray — the lines win regardless of terrain depth
-        RenderSystem.depthMask(false);     // don't pollute the depth buffer with overlay lines
-        RenderSystem.disableCull();
-
-        poseStack.pushPose();
-        poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
-
-        Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.begin(
-                VertexFormat.Mode.LINES, DefaultVertexFormat.POSITION_COLOR_NORMAL);
-        // renderLineBox emits the 12 edges (POSITION_COLOR_NORMAL) transformed by the pose.
-        // 1.21.2+ moved the line/shape helpers from LevelRenderer to ShapeRenderer.
-        ShapeRenderer.renderLineBox(poseStack, buffer, bounds, r, g, b, a);
-        MeshData mesh = buffer.build();
-        if (mesh != null) {
-            BufferUploader.drawWithShader(mesh);
-        }
-
-        poseStack.popPose();
-
-        // Restore default GL state.
-        RenderSystem.enableCull();
-        RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
+        VoxelShape voxelShape = Shapes.create(bounds);
+        VertexConsumer vc = bufferSource.getBuffer(LINES_NO_DEPTH);
+        ShapeRenderer.renderShape(
+                poseStack, vc, voxelShape, -camPos.x, -camPos.y, -camPos.z, GUIDE_COLOR_ARGB);
     }
 }

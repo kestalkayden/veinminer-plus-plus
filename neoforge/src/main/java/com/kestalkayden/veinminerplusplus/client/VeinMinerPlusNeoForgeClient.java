@@ -10,6 +10,7 @@ import com.kestalkayden.veinminerplusplus.network.ShapeSelectPayload;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.neoforged.bus.api.IEventBus;
@@ -143,6 +144,8 @@ public final class VeinMinerPlusNeoForgeClient {
      */
     private static void onRenderLevel(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
-        ShapeGuideRenderer.render(event.getPoseStack());
+        MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
+        ShapeGuideRenderer.render(event.getPoseStack(), bufferSource);
+        bufferSource.endBatch();
     }
 }
