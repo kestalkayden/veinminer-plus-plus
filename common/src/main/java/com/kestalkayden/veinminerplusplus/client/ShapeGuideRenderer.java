@@ -36,7 +36,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * centred on the block the player is looking at.  Call {@link #render} from both loaders'
  * AFTER_TRANSLUCENT world-render hook.
  *
- * <h3>1.21.5 render path (early RenderPipeline)</h3>
+ * <h3>1.21.8 render path (RenderPipeline + UBOs)</h3>
  *
  * <p>The RenderPipeline rework landed in 1.21.5 (immediate-mode {@code RenderSystem.setShader} /
  * {@code BufferUploader} are gone). Geometry is batched through a {@link RenderType} backed by a
@@ -93,8 +93,13 @@ public final class ShapeGuideRenderer {
             .withLocation(ResourceLocation.fromNamespaceAndPath("veinminerplusplus", "pipeline/lines_no_depth"))
             .withVertexShader("core/rendertype_lines")
             .withFragmentShader("core/rendertype_lines")
-            .withUniform("LineWidth", UniformType.FLOAT)
-            .withUniform("ScreenSize", UniformType.VEC2)
+            // 1.21.8 (post the 1.21.6 shader rework) folded the line scalars into uniform buffers:
+            // the vanilla LINES snippet seeds from the private GLOBALS_SNIPPET, so replicate those
+            // UBOs here (DynamicTransforms/Projection/Fog/Globals) so the lines shader links.
+            .withUniform("DynamicTransforms", UniformType.UNIFORM_BUFFER)
+            .withUniform("Projection", UniformType.UNIFORM_BUFFER)
+            .withUniform("Fog", UniformType.UNIFORM_BUFFER)
+            .withUniform("Globals", UniformType.UNIFORM_BUFFER)
             .withBlend(BlendFunction.TRANSLUCENT)
             .withCull(false)
             .withVertexFormat(DefaultVertexFormat.POSITION_COLOR_NORMAL, VertexFormat.Mode.LINES)

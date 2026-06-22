@@ -266,7 +266,9 @@ public final class VeinMiner {
             }
 
             Deque<Target> queue = entry.getValue();
-            ServerLevel level = player.serverLevel();
+            // 1.21.8: ServerPlayer.level() is covariantly typed to ServerLevel (serverLevel() existed
+            // only on the intermediate 1.21.1 line, where level() returned the base Level).
+            ServerLevel level = player.level();
             breaking = true;
             try {
                 int budget = VeinMinerConfig.blocksPerTick;

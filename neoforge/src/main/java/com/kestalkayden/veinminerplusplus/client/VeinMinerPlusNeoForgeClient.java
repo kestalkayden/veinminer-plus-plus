@@ -35,8 +35,7 @@ import net.neoforged.neoforge.common.NeoForge;
  *       {@link ClientShapeState}.
  *   <li>Show an action-bar overlay message and send {@link ShapeSelectPayload} to the server via
  *       {@code Minecraft.getInstance().getConnection().send(new ServerboundCustomPayloadPacket(...))}.
- *   <li>Subscribe to {@link RenderLevelStageEvent} and, on the
- *       {@link RenderLevelStageEvent.Stage#AFTER_TRANSLUCENT_BLOCKS} stage, delegate to
+ *   <li>Subscribe to {@link RenderLevelStageEvent.AfterTranslucentBlocks} and delegate to
  *       {@link ShapeGuideRenderer}.
  *   <li>Register the mod config screen via {@link IConfigScreenFactory} so the mod-list
  *       "Config" button opens the hand-built {@link VeinMinerPlusConfigScreen}.
@@ -142,8 +141,9 @@ public final class VeinMinerPlusNeoForgeClient {
      * translucent overlay that must appear in front of the world. The renderer draws in immediate
      * mode (RenderSystem + Tesselator), so it only needs the frame PoseStack.
      */
-    private static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
+    private static void onRenderLevel(RenderLevelStageEvent.AfterTranslucentBlocks event) {
+        // 1.21.8 (NeoForge 21.8): RenderLevelStageEvent.getStage()/Stage are gone — subscribe to the
+        // per-stage subclass directly instead of guarding on the stage.
         MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
         ShapeGuideRenderer.render(event.getPoseStack(), bufferSource);
         bufferSource.endBatch();
