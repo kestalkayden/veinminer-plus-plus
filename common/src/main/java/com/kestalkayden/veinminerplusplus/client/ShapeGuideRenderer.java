@@ -15,8 +15,8 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.CoreShaders;
+import net.minecraft.client.renderer.ShapeRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
@@ -29,9 +29,9 @@ import net.minecraft.world.phys.Vec3;
  * centred on the block the player is looking at.  Call {@link #render} from both loaders'
  * AFTER_TRANSLUCENT world-render hook.
  *
- * <h3>1.21.1 render path (pre-RenderPipeline)</h3>
+ * <h3>1.21.x render path (pre-RenderPipeline)</h3>
  *
- * <p>1.21.1 predates the {@code RenderPipeline}/{@code RenderSetup} rework (1.21.6) and the
+ * <p>1.21.x predates the {@code RenderPipeline}/{@code RenderSetup} rework (1.21.6) and the
  * {@code SubmitNodeCollector} rework (26.2).  Rendering is classic immediate-mode: we set GL state
  * via {@link RenderSystem}, build the 12 box edges into a {@link BufferBuilder} from the shared
  * {@link Tesselator}, and draw them straight away with {@link BufferUploader#drawWithShader}.
@@ -132,7 +132,9 @@ public final class ShapeGuideRenderer {
         float b = ( GUIDE_COLOR_ARGB        & 0xFF) / 255.0f;
 
         // GL state for see-through translucent lines.
-        RenderSystem.setShader(GameRenderer::getRendertypeLinesShader);
+        // 1.21.2+ shader system: setShader takes a ShaderProgram (CoreShaders.RENDERTYPE_LINES);
+        // the Supplier<ShaderInstance> + GameRenderer.getRendertypeLinesShader form is 1.21.1-only.
+        RenderSystem.setShader(CoreShaders.RENDERTYPE_LINES);
         RenderSystem.lineWidth(LINE_WIDTH);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -147,7 +149,8 @@ public final class ShapeGuideRenderer {
         BufferBuilder buffer = tesselator.begin(
                 VertexFormat.Mode.LINES, DefaultVertexFormat.POSITION_COLOR_NORMAL);
         // renderLineBox emits the 12 edges (POSITION_COLOR_NORMAL) transformed by the pose.
-        LevelRenderer.renderLineBox(poseStack, buffer, bounds, r, g, b, a);
+        // 1.21.2+ moved the line/shape helpers from LevelRenderer to ShapeRenderer.
+        ShapeRenderer.renderLineBox(poseStack, buffer, bounds, r, g, b, a);
         MeshData mesh = buffer.build();
         if (mesh != null) {
             BufferUploader.drawWithShader(mesh);

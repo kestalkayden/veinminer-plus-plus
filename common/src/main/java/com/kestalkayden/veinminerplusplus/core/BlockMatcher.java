@@ -26,8 +26,7 @@ public final class BlockMatcher {
         BlockTags.REDSTONE_ORES, BlockTags.EMERALD_ORES, BlockTags.LAPIS_ORES, BlockTags.DIAMOND_ORES,
         BlockTags.OAK_LOGS, BlockTags.BIRCH_LOGS, BlockTags.SPRUCE_LOGS, BlockTags.JUNGLE_LOGS,
         BlockTags.ACACIA_LOGS, BlockTags.DARK_OAK_LOGS, BlockTags.MANGROVE_LOGS, BlockTags.CHERRY_LOGS,
-        // PALE_OAK_LOGS is 1.21.4+ (Pale Garden) — omitted on 1.21.1.
-        BlockTags.CRIMSON_STEMS, BlockTags.WARPED_STEMS);
+        BlockTags.PALE_OAK_LOGS, BlockTags.CRIMSON_STEMS, BlockTags.WARPED_STEMS);
 
     private final Block originBlock;
     private final List<TagKey<Block>> originGroups;
