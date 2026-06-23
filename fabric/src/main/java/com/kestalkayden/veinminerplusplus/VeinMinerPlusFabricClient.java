@@ -13,8 +13,10 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -105,8 +107,10 @@ public class VeinMinerPlusFabricClient implements ClientModInitializer {
             client.player.displayClientMessage(
                     Component.translatable("veinminerplusplus.shape", ClientShapeState.current.label), true);
 
-            // Tell the server what we picked.
-            ClientPlayNetworking.send(new ShapeSelectPayload(ClientShapeState.current.ordinal()));
+            // Tell the server what we picked (1.20.1 channel send).
+            FriendlyByteBuf buf = PacketByteBufs.create();
+            ShapeSelectPayload.write(buf, ClientShapeState.current.ordinal());
+            ClientPlayNetworking.send(ShapeSelectPayload.CHANNEL, buf);
         }
     }
 }

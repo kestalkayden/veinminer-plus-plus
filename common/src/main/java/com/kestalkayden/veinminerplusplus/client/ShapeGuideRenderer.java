@@ -8,7 +8,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -143,15 +142,14 @@ public final class ShapeGuideRenderer {
         poseStack.pushPose();
         poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
 
+        // 1.20.1 immediate-mode buffer: getBuilder() + begin(), draw via end() (which returns a
+        // RenderedBuffer; Tesselator.begin(...) returning a started BufferBuilder + MeshData are 1.21).
         Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.begin(
-                VertexFormat.Mode.LINES, DefaultVertexFormat.POSITION_COLOR_NORMAL);
+        BufferBuilder buffer = tesselator.getBuilder();
+        buffer.begin(VertexFormat.Mode.LINES, DefaultVertexFormat.POSITION_COLOR_NORMAL);
         // renderLineBox emits the 12 edges (POSITION_COLOR_NORMAL) transformed by the pose.
         LevelRenderer.renderLineBox(poseStack, buffer, bounds, r, g, b, a);
-        MeshData mesh = buffer.build();
-        if (mesh != null) {
-            BufferUploader.drawWithShader(mesh);
-        }
+        BufferUploader.drawWithShader(buffer.end());
 
         poseStack.popPose();
 

@@ -14,8 +14,6 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.components.events.GuiEventListener;
-import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
-import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
@@ -71,9 +69,6 @@ public class VeinMinerPlusConfigScreen extends Screen {
     /** The custom scrolling list; non-null after {@link #init()}. */
     private ConfigList list;
 
-    /** Manages the header (title), scrollable contents (list), and footer (Done button). */
-    private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this);
-
     // -------------------------------------------------------------------------
     // Constructor
     // -------------------------------------------------------------------------
@@ -94,32 +89,32 @@ public class VeinMinerPlusConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        layout.addTitleHeader(TITLE, font);
-        list = layout.addToContents(new ConfigList(minecraft, width, this));
-        // Two side-by-side footer buttons. The footer is a FrameLayout, which stacks every child
-        // centred at the same spot — so wrap the pair in a horizontal LinearLayout (the vanilla
-        // ConfirmScreen pattern) to lay them out next to each other instead of overlapping.
-        LinearLayout footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
-        footer.addChild(
+        // 1.20.1 predates list/layout integration (AbstractSelectionList isn't a LayoutElement and
+        // HeaderAndFooterLayout has no addTitleHeader), so lay the screen out manually: the list
+        // fills the area between a top title strip and a bottom button row; the title is drawn in
+        // render(). init() re-runs on resize, so this doubles as repositioning.
+        list = addRenderableWidget(new ConfigList(minecraft, width, height, 32, height - 36));
+
+        int buttonY = height - 28;
+        int totalWidth = 150 + 8 + 150;
+        int leftX = (width - totalWidth) / 2;
+        addRenderableWidget(
                 Button.builder(
                         Component.translatable("veinminerplusplus.config.openConfigFolder"),
                         b -> Util.getPlatform().openUri(VeinMinerPlusConfig.getConfigDir().toUri()))
-                      .width(150)
+                      .bounds(leftX, buttonY, 150, 20)
                       .build());
-        footer.addChild(
+        addRenderableWidget(
                 Button.builder(CommonComponents.GUI_DONE, b -> onClose())
-                      .width(150)
+                      .bounds(leftX + 158, buttonY, 150, 20)
                       .build());
-        layout.visitWidgets(this::addRenderableWidget);
-        repositionElements();
     }
 
     @Override
-    protected void repositionElements() {
-        layout.arrangeElements();
-        if (list != null) {
-            list.updateSize(width, layout);
-        }
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(guiGraphics);
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        guiGraphics.drawCenteredString(font, TITLE, width / 2, 12, 0xFFFFFF);
     }
 
     @Override
@@ -162,11 +157,9 @@ public class VeinMinerPlusConfigScreen extends Screen {
         /** Height of a section header row (single line of text, plus a little padding). */
         private static final int HEADER_ROW_HEIGHT = 18;
 
-        ConfigList(Minecraft minecraft, int screenWidth, Screen screen) {
-            // height and y are set via updateSize() from repositionElements(); pass 0 for now.
-            super(minecraft, screenWidth, 0, 0, OPTION_ROW_HEIGHT);
-            // Fill the content area top-down (header/footer layout owns the vertical bounds) rather
-            // than vertically centring the rows.
+        ConfigList(Minecraft minecraft, int screenWidth, int screenHeight, int top, int bottom) {
+            // 1.20.1 list constructor takes explicit (width, height, top, bottom, itemHeight).
+            super(minecraft, screenWidth, screenHeight, top, bottom, OPTION_ROW_HEIGHT);
             this.centerListVertically = false;
             populateEntries();
         }

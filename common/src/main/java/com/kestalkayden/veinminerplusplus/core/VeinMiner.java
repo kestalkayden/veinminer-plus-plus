@@ -13,12 +13,12 @@ import java.util.UUID;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.DiggerItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -125,7 +125,9 @@ public final class VeinMiner {
             return tool.isCorrectToolForDrops(state);
         }
         if (VeinMinerConfig.requireTool) {
-            return !tool.isEmpty() && tool.has(DataComponents.TOOL);
+            // 1.20.1 predates item components; a DiggerItem (pickaxe/axe/shovel/hoe) is the
+            // pre-component "is a tool" check for the requireTool policy.
+            return !tool.isEmpty() && tool.getItem() instanceof DiggerItem;
         }
         return true;
     }

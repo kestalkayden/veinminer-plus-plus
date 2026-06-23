@@ -12,7 +12,6 @@ import com.kestalkayden.veinminerplusplus.network.ShapeSelectPayload;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.level.ServerLevel;
@@ -41,17 +40,18 @@ public class VeinMinerPlusFabric implements ModInitializer {
         // Drain queued veins a few blocks per tick.
         ServerTickEvents.END_SERVER_TICK.register(VeinMiner::tick);
 
-        // Register the C2S shape-select payload and its server receiver HERE (main init), not in
-        // the client entrypoint -- so a dedicated server registers them too. The client only sends.
-        PayloadTypeRegistry.playC2S().register(
-                ShapeSelectPayload.TYPE, ShapeSelectPayload.STREAM_CODEC);
+        // Register the C2S shape-select receiver HERE (main init) so a dedicated server has it too.
+        // 1.20.1 uses the channel-based networking API (the typed payload registry is 1.20.5+); the
+        // buffer is read on the network thread, then applied on the server thread via execute().
         ServerPlayNetworking.registerGlobalReceiver(
-                ShapeSelectPayload.TYPE,
-                (payload, context) -> {
-                    ServerPlayer player = context.player();
-                    MineShape[] shapes = MineShape.values();
-                    int ordinal = Math.max(0, Math.min(payload.shapeOrdinal(), shapes.length - 1));
-                    ShapeState.set(player.getUUID(), shapes[ordinal]);
+                ShapeSelectPayload.CHANNEL,
+                (server, player, handler, buf, responseSender) -> {
+                    int ordinal = ShapeSelectPayload.read(buf);
+                    server.execute(() -> {
+                        MineShape[] shapes = MineShape.values();
+                        int clamped = Math.max(0, Math.min(ordinal, shapes.length - 1));
+                        ShapeState.set(player.getUUID(), shapes[clamped]);
+                    });
                 });
     }
 }
