@@ -5,9 +5,12 @@ import org.slf4j.LoggerFactory;
 
 import com.kestalkayden.veinminerplusplus.config.VeinMinerPlusConfig;
 import com.kestalkayden.veinminerplusplus.core.MineShape;
+import com.kestalkayden.veinminerplusplus.core.PlayerState;
 import com.kestalkayden.veinminerplusplus.core.ShapeState;
 import com.kestalkayden.veinminerplusplus.core.VeinMiner;
+import com.kestalkayden.veinminerplusplus.network.ActivationHeldPayload;
 import com.kestalkayden.veinminerplusplus.network.ShapeSelectPayload;
+import com.kestalkayden.veinminerplusplus.network.ToggleEnabledPayload;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -52,6 +55,23 @@ public class VeinMinerPlusFabric implements ModInitializer {
                         int clamped = Math.max(0, Math.min(ordinal, shapes.length - 1));
                         ShapeState.set(player.getUUID(), shapes[clamped]);
                     });
+                });
+
+        // C2S: per-player master on/off toggle. Same channel pattern as ShapeSelectPayload above —
+        // read on the network thread, apply on the server thread via execute().
+        ServerPlayNetworking.registerGlobalReceiver(
+                ToggleEnabledPayload.CHANNEL,
+                (server, player, handler, buf, responseSender) -> {
+                    boolean enabled = ToggleEnabledPayload.read(buf);
+                    server.execute(() -> PlayerState.setEnabled(player.getUUID(), enabled));
+                });
+
+        // C2S: rebindable activation key held-state.
+        ServerPlayNetworking.registerGlobalReceiver(
+                ActivationHeldPayload.CHANNEL,
+                (server, player, handler, buf, responseSender) -> {
+                    boolean held = ActivationHeldPayload.read(buf);
+                    server.execute(() -> PlayerState.setActivationHeld(player.getUUID(), held));
                 });
     }
 }
