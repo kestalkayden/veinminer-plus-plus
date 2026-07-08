@@ -39,6 +39,7 @@ import net.minecraft.network.chat.Component;
  *     Smart tree detection       [on/off]   (OptionEntry)
  *     Clear felled-tree leaves   [on/off]   (OptionEntry)
  *   ────────────── Tooling ───────────────  (HeaderEntry)
+ *     Sneak activates             [on/off]  (OptionEntry)
  *     Require a tool             [on/off]   (OptionEntry)
  *     Durability cost            [slider]   (OptionEntry)
  *   ────────── Modes & display ───────────  (HeaderEntry)
@@ -235,6 +236,12 @@ public class VeinMinerPlusConfigScreen extends Screen {
 
             // ---- Tooling ----
             addHeader("veinminerplusplus.config.section.tooling");
+            addOption(OptionInstance.createBoolean(
+                    "veinminerplusplus.config.sneakActivates",
+                    OptionInstance.cachedConstantTooltip(
+                            Component.translatable("veinminerplusplus.config.sneakActivates.tooltip")),
+                    cfg.sneakActivates,
+                    val -> VeinMinerPlusConfig.get().sneakActivates = val));
             addOption(OptionInstance.createBoolean(
                     "veinminerplusplus.config.requireTool",
                     OptionInstance.cachedConstantTooltip(
