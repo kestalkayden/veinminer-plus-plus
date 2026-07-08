@@ -4,16 +4,20 @@ import org.lwjgl.glfw.GLFW;
 
 import com.kestalkayden.veinminerplusplus.VeinMinerPlus;
 import com.kestalkayden.veinminerplusplus.core.ClientShapeState;
+import com.kestalkayden.veinminerplusplus.core.ClientState;
 import com.kestalkayden.veinminerplusplus.core.MineShape;
 import com.kestalkayden.veinminerplusplus.core.ShapeState;
 import com.kestalkayden.veinminerplusplus.core.VeinMinerConfig;
+import com.kestalkayden.veinminerplusplus.network.ActivationHeldPayload;
 import com.kestalkayden.veinminerplusplus.network.ShapeSelectPayload;
+import com.kestalkayden.veinminerplusplus.network.ToggleEnabledPayload;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -71,6 +75,18 @@ public final class VeinMinerPlusNeoForgeClient {
             GLFW.GLFW_KEY_RIGHT_BRACKET,
             CATEGORY);
 
+    /** Rebindable vein-mine activation (hold while breaking). Default: unbound. */
+    public static final KeyMapping KEY_ACTIVATE = new KeyMapping(
+            "key.veinminerplusplus.activate",
+            GLFW.GLFW_KEY_UNKNOWN,
+            CATEGORY);
+
+    /** Toggle vein-mining on/off for this client. Default: unbound. */
+    public static final KeyMapping KEY_TOGGLE = new KeyMapping(
+            "key.veinminerplusplus.toggle",
+            GLFW.GLFW_KEY_UNKNOWN,
+            CATEGORY);
+
     // -------------------------------------------------------------------------
     // Constructor (called once from the mod entrypoint on the CLIENT dist only)
     // -------------------------------------------------------------------------
@@ -102,6 +118,8 @@ public final class VeinMinerPlusNeoForgeClient {
         event.registerCategory(CATEGORY);
         event.register(KEY_PREV_SHAPE);
         event.register(KEY_NEXT_SHAPE);
+        event.register(KEY_ACTIVATE);
+        event.register(KEY_TOGGLE);
     }
 
     // -------------------------------------------------------------------------
@@ -110,6 +128,15 @@ public final class VeinMinerPlusNeoForgeClient {
 
     private static void onClientTick(ClientTickEvent.Post event) {
         Minecraft client = Minecraft.getInstance();
+
+        // (Re)sync per-connection client state the moment we connect, so a long-running dedicated
+        // server never keeps a stale toggle from a previous session.
+        boolean connected = client.player != null && client.getConnection() != null;
+        if (connected && !ClientState.wasConnected) {
+            send(client, new ToggleEnabledPayload(ClientState.enabled));
+            ClientState.activationHeldSent = false;   // force an activation re-sync below
+        }
+        ClientState.wasConnected = connected;
 
         boolean changed = false;
         while (KEY_PREV_SHAPE.consumeClick()) {
@@ -123,7 +150,9 @@ public final class VeinMinerPlusNeoForgeClient {
             changed = true;
         }
 
-        if (changed && client.player != null) {
+        if (client.player == null) return;
+
+        if (changed) {
             // Stamp the cycle time so the guide knows to show briefly.
             if (client.level != null) {
                 ClientShapeState.lastCycleGameTime = client.level.getGameTime();
@@ -133,14 +162,37 @@ public final class VeinMinerPlusNeoForgeClient {
             client.player.sendOverlayMessage(
                     Component.translatable("veinminerplusplus.shape", ClientShapeState.current.label));
 
-            // Send C2S packet. PacketDistributor.sendToServer() is removed in NeoForge 26.1;
-            // the correct approach is to wrap the payload in ServerboundCustomPayloadPacket and
-            // send it directly via the active connection.
-            if (client.getConnection() != null) {
-                client.getConnection().send(
-                        new ServerboundCustomPayloadPacket(
-                                new ShapeSelectPayload(ClientShapeState.current.ordinal())));
-            }
+            send(client, new ShapeSelectPayload(ClientShapeState.current.ordinal()));
+        }
+
+        // On/off toggle — one flip per press, with a client-only chat line.
+        while (KEY_TOGGLE.consumeClick()) {
+            ClientState.enabled = !ClientState.enabled;
+            // Client-only chat line (LocalPlayer#sendSystemMessage routes to the chat HUD, never
+            // the server) so only this player sees the on/off feedback.
+            client.player.sendSystemMessage(
+                    Component.translatable(ClientState.enabled
+                            ? "veinminerplusplus.toggle.enabled"
+                            : "veinminerplusplus.toggle.disabled"));
+            send(client, new ToggleEnabledPayload(ClientState.enabled));
+        }
+
+        // Rebindable activation key — report held-state changes (edge-triggered).
+        boolean held = KEY_ACTIVATE.isDown();
+        if (held != ClientState.activationHeldSent) {
+            ClientState.activationHeldSent = held;
+            send(client, new ActivationHeldPayload(held));
+        }
+    }
+
+    /**
+     * Send a C2S payload over the active play connection. PacketDistributor.sendToServer() is
+     * removed in NeoForge 26.1, so the payload is wrapped in a {@link ServerboundCustomPayloadPacket}
+     * and sent directly via the connection.
+     */
+    private static void send(Minecraft client, CustomPacketPayload payload) {
+        if (client.getConnection() != null) {
+            client.getConnection().send(new ServerboundCustomPayloadPacket(payload));
         }
     }
 
