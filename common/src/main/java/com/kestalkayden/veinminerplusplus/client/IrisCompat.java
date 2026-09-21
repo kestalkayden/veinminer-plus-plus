@@ -1,6 +1,6 @@
 package com.kestalkayden.veinminerplusplus.client;
 
-import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 
 /**
  * Optional Iris integration — Veinminer++ neither depends on nor bundles Iris.

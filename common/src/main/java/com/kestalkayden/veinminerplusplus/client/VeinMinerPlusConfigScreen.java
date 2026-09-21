@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.kestalkayden.veinminerplusplus.config.VeinMinerPlusConfig;
 
-import net.minecraft.util.Util;
+import com.mojang.blaze3d.Blaze3D;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -115,7 +115,7 @@ public class VeinMinerPlusConfigScreen extends Screen {
         footer.addChild(
                 Button.builder(
                         Component.translatable("veinminerplusplus.config.openConfigFolder"),
-                        b -> Util.getPlatform().openUri(VeinMinerPlusConfig.getConfigDir().toUri()))
+                        b -> Blaze3D.openUri(VeinMinerPlusConfig.getConfigDir().toUri()))
                       .width(150)
                       .build());
         footer.addChild(

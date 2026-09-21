@@ -1,6 +1,6 @@
 # Veinminer++
 
-A performant, tool-aware vein miner for Minecraft 26.2 (Fabric + NeoForge).
+A performant, tool-aware vein miner for Minecraft 26.3 (Fabric + NeoForge).
 
 **Hold Sneak while you break a block** and Veinminer++ mines the whole connected
 vein — any block your tool can actually collect, not just ores — staggered across
@@ -105,11 +105,11 @@ Outputs to `fabric/build/libs/` and `neoforge/build/libs/`.
 
 ## Requirements
 
-- Minecraft 26.2
+- Minecraft 26.3
 - Java 25
-- **Fabric:** Fabric Loader 0.18.4+ and Fabric API. ModMenu is optional (adds the
+- **Fabric:** Fabric Loader 0.19.5+ and Fabric API. ModMenu is optional (adds the
   config button).
-- **NeoForge:** NeoForge 26.2+.
+- **NeoForge:** NeoForge 26.3.0.7-beta+.
 
 ## License
 

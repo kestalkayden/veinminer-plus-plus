@@ -5,9 +5,11 @@ import com.kestalkayden.veinminerplusplus.core.ClientState;
 import com.kestalkayden.veinminerplusplus.core.MineShape;
 import com.kestalkayden.veinminerplusplus.core.VeinMinerConfig;
 
-import com.mojang.blaze3d.pipeline.DepthStencilState;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.platform.CompareOp;
+import com.mojang.renderpearl.api.pipeline.BlendFunction;
+import com.mojang.renderpearl.api.pipeline.ColorTargetState;
+import com.mojang.renderpearl.api.pipeline.DepthStencilState;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.CompareOp;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.client.Minecraft;
@@ -82,10 +84,20 @@ public final class ShapeGuideRenderer {
      * access widener / NeoForge access transformer ({@code lines_no_depth}). Seeded from
      * {@code LINES_SNIPPET} so it inherits the vanilla lines shader + vertex format; only the
      * depth-stencil state is overridden.
+     *
+     * <p>26.3 moved the pipeline types from {@code com.mojang.blaze3d.pipeline} (and
+     * {@code CompareOp} from {@code blaze3d.platform}) to {@code com.mojang.renderpearl.api.pipeline}
+     * — the new OpenGL/Vulkan render abstraction. Same members, same shapes; only the imports and
+     * the AW/AT descriptors changed. It also pulled the colour-target state OUT of the snippet:
+     * every concrete pipeline now declares its own, and one without any fails at draw time with
+     * "Render pass color attachment count must match pipeline color target state count". The 26.2
+     * snippet carried {@code TRANSLUCENT} implicitly, so that is restated here — the guide colour
+     * is half-alpha and would otherwise draw opaque (vanilla's own {@code LINES} went {@code DEFAULT}).
      */
     private static final RenderPipeline PIPELINE_LINES_NO_DEPTH = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
                     .withLocation(Identifier.fromNamespaceAndPath("veinminerplusplus", "lines_no_depth"))
+                    .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
                     .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
                     .build());
     // register() the pipeline: an UNregistered custom pipeline draws in vanilla but Sodium/Iris

@@ -1,6 +1,6 @@
 package com.kestalkayden.veinminerplusplus.client;
 
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import com.kestalkayden.veinminerplusplus.VeinMinerPlus;
 import com.kestalkayden.veinminerplusplus.core.ClientShapeState;
@@ -65,25 +65,25 @@ public final class VeinMinerPlusNeoForgeClient {
     /** Cycle to the previous shape. Default: [ */
     public static final KeyMapping KEY_PREV_SHAPE = new KeyMapping(
             "key.veinminerplusplus.shape_prev",
-            GLFW.GLFW_KEY_LEFT_BRACKET,
+            InputConstants.KEY_LBRACKET,
             CATEGORY);
 
     /** Cycle to the next shape. Default: ] */
     public static final KeyMapping KEY_NEXT_SHAPE = new KeyMapping(
             "key.veinminerplusplus.shape_next",
-            GLFW.GLFW_KEY_RIGHT_BRACKET,
+            InputConstants.KEY_RBRACKET,
             CATEGORY);
 
     /** Rebindable vein-mine activation (hold while breaking). Default: unbound. */
     public static final KeyMapping KEY_ACTIVATE = new KeyMapping(
             "key.veinminerplusplus.activate",
-            GLFW.GLFW_KEY_UNKNOWN,
+            InputConstants.UNKNOWN.getValue(),
             CATEGORY);
 
     /** Toggle vein-mining on/off for this client. Default: unbound. */
     public static final KeyMapping KEY_TOGGLE = new KeyMapping(
             "key.veinminerplusplus.toggle",
-            GLFW.GLFW_KEY_UNKNOWN,
+            InputConstants.UNKNOWN.getValue(),
             CATEGORY);
 
     // -------------------------------------------------------------------------

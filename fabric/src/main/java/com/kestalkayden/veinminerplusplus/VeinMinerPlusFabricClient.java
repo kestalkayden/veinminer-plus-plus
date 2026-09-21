@@ -1,6 +1,6 @@
 package com.kestalkayden.veinminerplusplus;
 
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import com.kestalkayden.veinminerplusplus.client.ShapeGuideRenderer;
 import com.kestalkayden.veinminerplusplus.core.ClientShapeState;
@@ -53,28 +53,28 @@ public class VeinMinerPlusFabricClient implements ClientModInitializer {
     public static final KeyMapping KEY_PREV_SHAPE = KeyMappingHelper.registerKeyMapping(
             new KeyMapping(
                     "key.veinminerplusplus.shape_prev",
-                    GLFW.GLFW_KEY_LEFT_BRACKET,
+                    InputConstants.KEY_LBRACKET,
                     CATEGORY));
 
     /** Cycle to the next shape. Default: ] */
     public static final KeyMapping KEY_NEXT_SHAPE = KeyMappingHelper.registerKeyMapping(
             new KeyMapping(
                     "key.veinminerplusplus.shape_next",
-                    GLFW.GLFW_KEY_RIGHT_BRACKET,
+                    InputConstants.KEY_RBRACKET,
                     CATEGORY));
 
     /** Rebindable vein-mine activation (hold while breaking). Default: unbound. */
     public static final KeyMapping KEY_ACTIVATE = KeyMappingHelper.registerKeyMapping(
             new KeyMapping(
                     "key.veinminerplusplus.activate",
-                    GLFW.GLFW_KEY_UNKNOWN,
+                    InputConstants.UNKNOWN.getValue(),
                     CATEGORY));
 
     /** Toggle vein-mining on/off for this client. Default: unbound. */
     public static final KeyMapping KEY_TOGGLE = KeyMappingHelper.registerKeyMapping(
             new KeyMapping(
                     "key.veinminerplusplus.toggle",
-                    GLFW.GLFW_KEY_UNKNOWN,
+                    InputConstants.UNKNOWN.getValue(),
                     CATEGORY));
 
     // -------------------------------------------------------------------------
