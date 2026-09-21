@@ -18,6 +18,16 @@ sourceSets {
     }
 }
 
+repositories {
+    // Modrinth — for Mod Menu. Gradle resolves the jar through its standard cache so CI doesn't
+    // need a local file in run/mods.
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+        content { includeGroup "maven.modrinth" }
+    }
+}
+
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
     // No `mappings` line — Minecraft 26.1 is deobfuscated and ships Mojang's official names.
@@ -25,8 +35,9 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 
-    // ModMenu — NOT bundled; it is a standalone mod that users install themselves.
-    implementation "com.terraformersmc:modmenu:${modmenu_version}"
+    // ModMenu — NOT bundled; it is a standalone mod that users install themselves. Pulled from
+    // the Modrinth maven (see repositories above), not maven.terraformersmc.com.
+    implementation "maven.modrinth:modmenu:${modmenu_version}"
 }
 
 loom {
